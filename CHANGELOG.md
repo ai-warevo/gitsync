@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-24
+
+### Breaking
+
+- fix BREAKING CHANGES
+
+### Added
+
+- fix BREAKING CHANGES
+- Add parallel pushes, retry logic, and JSON output
+- Add CLI flags, branch/remote filtering, and exit codes
+- Stabilize public API for library consumers v1.0+
+- Add YAML support and dual PascalCase/snake_case with separation of concerns
+- add certificate generation script for Windows code signing
+- add Windows binary metadata (version info, icon, code signing)
+- implement update check feature (-u flag)
+- add multi-platform binary builds to release workflow
+- rewrite gitsync from Rust to C++23
+
+### Changed
+
+- fix
+- fixes
+- Merge branch 'main' of github.com:ai-warevo/gitsync
+- update release quick-start with Windows setup and config hierarchy
+- rename release binaries to gitsync/gitsync.exe
+- version 0.6.0
+- fix cert
+- add certificate import from GitHub secrets for Windows code signing
+- remove GITSYNC_CODE_SIGN option - now gracefully handles missing cert
+- disable code signing - certificate not installed
+- add logging to FetchContent and CMAKE_MODULE_PATH for Windows build diagnostics
+- add Windows build instructions with cache clearing step
+- adopt comprehensive preset system from spoofiq
+- Merge branch 'main' of github.com:ai-warevo/gitsync
+- update CHANGELOG for Windows metadata features
+- version 0.5.0
+- ci :3
+- version 0.4.0
+- use reusable-release.yml like tpl
+- Merge branch 'main' of github.com:ai-warevo/gitsync
+- slop
+- update CHANGELOG for v0.3.0 release
+- version 0.3.0
+- version 0.2.0
+- fix
+- use aw_add_library instead of aw_core_library
+- replace vendored dependencies with FetchContent
+- update to new workflow structure
+- add .clang-tidy and .editorconfig config files
+- remove unnecessary documentation files
+- add final project completion summary
+- use C++23 instead of Rust
+
+### Fixed
+
+- ci
+- ai
+- resolve MSVC C4267 and C4456 warnings
+- move certificate import condition inside powershell script
+- correct secrets condition syntax in release workflow
+- add GITSYNC_CODE_SIGN option, disable in CI
+- add Windows popen/pclose compatibility defines
+- disable GITSYNC_BUILD_TESTS in release-msvc preset
+- update template_cpp to 123e346 with Windows/WindowsSDK fix
+- pin template_cpp to working commit c25898a with CodeSign fixes + re-enable code signing
+- force FetchContent to update aw_cmake_modules from main
+- make clean also removes _deps cache to force FetchContent update
+- use template_cpp commit c25898a with correct WindowsSDK include + add icon
+- remove GIT_SHALLOW to ensure fresh fetch of template_cpp main branch
+- correct aw_code_sign_target() TARGET parameter syntax
+- use Ninja Multi-Config for MSVC presets (more portable than VS generator)
+- correct aw_win_version() OUTVAR parameter syntax
+- Windows CMake presets and build-release target
+- override changelog-release defaults (remove boilerplate)
+- Windows compatibility - use _popen/_pclose and safe getenv
+- use ilammy/msvc-dev-cmd and cmake-build action for Windows
+
 ## [0.6.0] - 2026-11-24
 
 ### Added
@@ -149,7 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Template-based branch naming
 - CLI with version, help, update, and skip-host options
 
-[Unreleased]: https://github.com/ai-warevo/gitsync/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ai-warevo/gitsync/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ai-warevo/gitsync/compare/v1.1.10...v1.0.0
 [0.6.0]: https://github.com/ai-warevo/gitsync/compare/v1.1.10...v0.6.0
 [0.5.0]: https://github.com/ai-warevo/gitsync/compare/v1.1.10...v0.5.0
 [0.4.0]: https://github.com/ai-warevo/gitsync/compare/v1.1.10...v0.4.0
