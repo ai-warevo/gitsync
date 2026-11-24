@@ -55,7 +55,9 @@ Checks:
   - '-altera-*'
   - '-fuchsia-*'
   - '-android-*'
-  # Header guard: standard include guards (AW_<PROJECT>_<PATH>_HPP)
+  # Header guard: standard include guards (`#ifndef`/`#define`/`#endif`)
+  # Pattern: AW_GITSYNC_<PATH>_HPP (e.g. AW_GITSYNC_CLI_ARGS_HPP)
+  # Format: #ifndef and #define at top; #endif // <GUARD> at bottom
   - '-llvm-header-guard'
   # Non-private member variables: detail structs have public fields by design
   - '-misc-non-private-member-variables-in-classes'

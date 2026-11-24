@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AW_GITSYNC_UTILS_HPP
+#define AW_GITSYNC_UTILS_HPP
 
 #include <string>
 #include <string_view>
@@ -14,3 +15,5 @@ std::string parse_latest_version(std::string_view json_response, std::string_vie
 int compare_versions(std::string_view v1, std::string_view v2);
 
 }  // namespace aw::gitsync
+
+#endif // AW_GITSYNC_UTILS_HPP

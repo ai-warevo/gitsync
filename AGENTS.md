@@ -90,6 +90,9 @@ Tests cover:
 - Keep this file (AGENTS.md) up-to-date with new rules
 - Link to code examples when rules are complex
 
+## Header guards and include guards
+- Headers use standard C++ include guards (`#ifndef <GUARD>` / `#define <GUARD>` / `#endif // <GUARD>`) with unique `UPPER_SNAKE_CASE` macro names derived from the project and relative file path (e.g., `PROJECT_MODULE_FILE_HPP`).
+
 ## C++ comments
 
 - **Explain "Why", not "What":** Delete comments that narrate code (e.g., `// increment i`, `// null check`); keep only those explaining intent, business logic, non-obvious edge cases, or architectural constraints.
