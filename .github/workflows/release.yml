@@ -1,4 +1,4 @@
-# Release — build gitsync binaries and publish
+# Release — resolve version → build → commit/tag → publish
 
 name: Release
 
@@ -6,9 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version override (X.Y.Z); use auto to derive from CHANGELOG.md'
+        description: 'Version override (X.Y.Z); use auto to derive from git log'
         required: false
-        default: auto
         type: string
 
 permissions:
@@ -18,9 +17,34 @@ permissions:
 jobs:
   resolve-version:
     name: Resolve version
-    uses: ai-warevo/.github/.github/workflows/reusable-release-resolve.yml@main
-    with:
-      version: ${{ inputs.version || 'auto' }}
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_version_stripped: ${{ steps.version.outputs.release_version_stripped }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Generate CHANGELOG from git log
+        uses: ai-warevo/.github/.github/actions/changelog-generate@main
+        with:
+          force: 'true'
+        continue-on-error: true
+
+      - name: Ensure [Unreleased] exists
+        run: |
+          if ! grep -q '^\## \[Unreleased\]' CHANGELOG.md; then
+            sed -i '1a\\n## [Unreleased]' CHANGELOG.md
+          fi
+        shell: bash
+
+      - name: Resolve version
+        id: version
+        uses: ai-warevo/.github/.github/actions/release-version@main
+        with:
+          version: ${{ inputs.version || 'auto' }}
 
   build:
     name: Build ${{ matrix.os-label }} binary
@@ -56,10 +80,6 @@ jobs:
         run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
         shell: bash
 
-      - name: Show resolved version
-        run: cat VERSION
-        shell: bash
-
       - name: Setup MSVC environment
         if: ${{ matrix.setup-env }}
         uses: ilammy/msvc-dev-cmd@v1
@@ -80,37 +100,9 @@ jobs:
           config: ${{ matrix.os-label == 'Windows' && 'Release' || '' }}
           extra_args: -DGITSYNC_BUILD_TESTS=OFF -DGITSYNC_WARNINGS_AS_ERRORS=ON
 
-      - name: Check build output exists
-        run: |
-          echo "Build directory: ${{ matrix.build-dir }}"
-          echo "Artifact path: ${{ matrix.artifact-path }}"
-          if [ -f "${{ matrix.artifact-path }}" ]; then
-            echo "✓ Artifact file exists"
-            ls -lh "${{ matrix.artifact-path }}"
-          else
-            echo "✗ Artifact file NOT found"
-            echo "Directory contents:"
-            find "${{ matrix.build-dir }}" -type f -name "*gitsync*" 2>/dev/null || echo "No gitsync files found"
-            echo "Full build directory:"
-            ls -laR "${{ matrix.build-dir }}" 2>/dev/null | head -100
-            exit 1
-          fi
-        shell: bash
-
       - name: Post-build (strip binary)
         if: ${{ matrix.post-build != '' }}
         run: ${{ matrix.post-build }}
-        shell: bash
-
-      - name: Verify artifact after post-build
-        run: |
-          if [ -f "${{ matrix.artifact-path }}" ]; then
-            echo "✓ Artifact still exists after post-build"
-            ls -lh "${{ matrix.artifact-path }}"
-          else
-            echo "✗ Artifact lost after post-build"
-            exit 1
-          fi
         shell: bash
 
       - name: Upload artifact
@@ -124,29 +116,18 @@ jobs:
     name: Collect release artifacts
     runs-on: ubuntu-latest
     needs: [build]
-    if: always()
     steps:
       - name: Download Linux artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: gitsync-linux
           path: artifacts
-        continue-on-error: true
 
       - name: Download Windows artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: gitsync-windows
           path: artifacts
-        continue-on-error: true
-
-      - name: Verify artifacts exist
-        run: |
-          if [ ! -d artifacts ] || [ -z "$(ls -A artifacts)" ]; then
-            echo "::error::No artifacts found"
-            exit 1
-          fi
-          ls -la artifacts/
 
       - name: Upload final artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -173,58 +154,5 @@ jobs:
         **Download the binary for your platform:**
         - Linux: `gitsync`
         - Windows: `gitsync.exe`
-
-        **Configuration example:**
-
-        Create `~/.gitsync/config.json` (or `%USERPROFILE%\.gitsync\config.json` on Windows):
-
-        ```json
-        {
-          "LogLevel": "info",
-          "SourceRemoteName": "origin",
-          "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
-          "SshKeyTypes": "ed25519,rsa",
-          "MaxRetries": 3,
-          "UpdateCheckUrl": "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
-          "RemoteUrls": {
-            "backup": "git@github.com:username/backup.git"
-          },
-          "IncludeBranches": ["main", "develop"],
-          "ExcludeBranches": [],
-          "IncludeRemotes": ["origin", "backup"],
-          "ExcludeRemotes": []
-        }
-        ```
-
-        **Quick setup — Linux:**
-        ```bash
-        chmod +x gitsync
-        sudo mv gitsync /usr/local/bin/gitsync
-        mkdir -p ~/.gitsync
-        cp config.json ~/.gitsync/
-        gitsync
-        ```
-
-        **Quick setup — Windows (PowerShell):**
-        ```powershell
-        Move-Item .\gitsync.exe C:\Windows\gitsync.exe
-        New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.gitsync"
-        Copy-Item config.json "$env:USERPROFILE\.gitsync\"
-        gitsync
-        ```
-
-        **Configuration hierarchy:** gitsync merges configs from three levels — **global** (`~/.gitsync/config.json`), **organization** (`.gitsync/config.json` in parent dirs), and **repository** (`.gitsync/config.json` in the working dir). Later levels override earlier ones.
-
-        **Configuration options:**
-        - `LogLevel`: Logging level (info, debug, error)
-        - `SourceRemoteName`: Default remote to sync from
-        - `RemoteBranchTemplate`: Branch naming with `%owner%`, `%reponame%`, `%branchname%` placeholders
-        - `SshKeyTypes`: Comma-separated SSH key types (e.g., ed25519,rsa)
-        - `MaxRetries`: Maximum retry attempts for operations
-        - `RemoteUrls`: Map of remote names to Git URLs
-        - `IncludeBranches`: Branches to sync (empty = all)
-        - `ExcludeBranches`: Branches to skip
-        - `IncludeRemotes`: Remotes to sync (empty = all)
-        - `ExcludeRemotes`: Remotes to skip
 
         See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
