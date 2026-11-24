@@ -35,11 +35,17 @@ jobs:
 
       - name: Ensure [Unreleased] exists
         run: |
-          if ! grep -q '^\## \[Unreleased\]' CHANGELOG.md; then
+          echo "Before:"
+          head -20 CHANGELOG.md
+          if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
             # Insert after "# Changelog" line
             awk '/^# Changelog/ { print; print ""; print "## [Unreleased]"; next } 1' CHANGELOG.md > CHANGELOG.md.tmp
             mv CHANGELOG.md.tmp CHANGELOG.md
           fi
+          echo "After:"
+          head -20 CHANGELOG.md
+          echo "Grep check:"
+          grep '^## \[Unreleased\]' CHANGELOG.md || echo "NOT FOUND"
         shell: bash
 
       - name: Resolve version
