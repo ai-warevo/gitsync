@@ -36,7 +36,9 @@ jobs:
       - name: Ensure [Unreleased] exists
         run: |
           if ! grep -q '^\## \[Unreleased\]' CHANGELOG.md; then
-            sed -i '1a\\n## [Unreleased]' CHANGELOG.md
+            # Insert after "# Changelog" line
+            awk '/^# Changelog/ { print; print ""; print "## [Unreleased]"; next } 1' CHANGELOG.md > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
           fi
         shell: bash
 
