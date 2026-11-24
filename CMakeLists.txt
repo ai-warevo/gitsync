@@ -31,17 +31,9 @@ FetchContent_Declare(
     FIND_PACKAGE_ARGS NAMES spdlog
 )
 
-FetchContent_Declare(
-    yaml_cpp
-    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG 0.8.0
-    GIT_SHALLOW TRUE
-    FIND_PACKAGE_ARGS NAMES yaml-cpp
-)
-
 set(FETCHCONTENT_QUIET OFF)
 set(FETCHCONTENT_TIMEOUT 180)
-FetchContent_MakeAvailable(nlohmann_json spdlog yaml_cpp)
+FetchContent_MakeAvailable(nlohmann_json spdlog)
 
 # Create core library with dependencies linked
 include(Library/Target)
@@ -62,8 +54,7 @@ aw_add_library(TARGET gitsync_core TYPE STATIC ALIAS aw::gitsync_core
     PUBLIC_INCLUDE_DIRS include
     PUBLIC_LINKS
         nlohmann_json::nlohmann_json
-        spdlog::spdlog
-        yaml-cpp)
+        spdlog::spdlog)
 
 # Windows version resource and icon (Windows only)
 if(WIN32)

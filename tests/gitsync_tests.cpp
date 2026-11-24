@@ -8,7 +8,6 @@
 #include <map>
 #include <string>
 #include <nlohmann/json.hpp>
-#include <yaml-cpp/yaml.h>
 
 using namespace aw::gitsync;
 using json = nlohmann::json;
