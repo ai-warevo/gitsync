@@ -137,7 +137,7 @@ std::optional<std::string> find_asset_url(std::string_view json_response, std::s
     return std::string(asset_obj.substr(url_start, url_end - url_start));
 }
 
-void check_for_update() {
+void check_for_update(const ConfigSettings& config) {
     std::cout << "gitsync v" << GITSYNC_VERSION << '\n';
     std::cout << "Checking for updates...\n";
 
@@ -148,14 +148,14 @@ void check_for_update() {
     asset_name = "gitsync";
 #endif
 
-    const std::string url = "https://api.github.com/repos/ai-warevo/gitsync/releases/latest";
-    const std::string curl_cmd =
-        std::format(R"(curl -s -H "Accept: application/vnd.github+json" "{}")", url);
+    /* Fetch VERSION file from configured URL (defaults to GitHub main branch) */
+    const std::string& url = config.update_check_url;
+    const std::string curl_cmd = std::format(R"(curl -s "{}")", url);
 
     FILE* pipe = popen(curl_cmd.c_str(), "r");
     if (!pipe) {
-        std::cerr << "Failed to run curl\n";
-        std::exit(1);
+        spdlog::warn("Failed to run curl for update check");
+        return;
     }
 
     std::string response;
@@ -166,11 +166,23 @@ void check_for_update() {
 
     int status = pclose(pipe);
     if (status != 0) {
-        std::cerr << "Failed to fetch release info\n";
-        std::exit(1);
+        spdlog::warn("Failed to fetch version from: {}", url);
+        return;
     }
 
-    std::string latest_version = parse_latest_version(response, GITSYNC_VERSION);
+    if (response.empty()) {
+        spdlog::warn("Empty response from version check");
+        return;
+    }
+
+    /* Strip whitespace and 'v' prefix from response */
+    response.erase(0, response.find_first_not_of(" \t\n\r"));
+    response.erase(response.find_last_not_of(" \t\n\r") + 1);
+    if (!response.empty() && response[0] == 'v') {
+        response.erase(0, 1);
+    }
+
+    std::string latest_version = response;
 
     std::string_view current = GITSYNC_VERSION;
     std::string_view latest = latest_version;
@@ -189,11 +201,10 @@ void check_for_update() {
 
     std::cout << std::format("New version available: v{} (current: v{})\n", latest, GITSYNC_VERSION);
 
-    auto asset_url = find_asset_url(response, asset_name);
-    if (!asset_url) {
-        std::cerr << std::format("Could not find download URL for asset: {}\n", asset_name);
-        std::exit(1);
-    }
+    /* Construct direct download URL for the asset */
+    std::string asset_url = std::format(
+        "https://github.com/ai-warevo/gitsync/releases/download/v{}/{}",
+        latest_version, asset_name);
 
     std::cout << "Downloading update...\n";
 
@@ -207,14 +218,14 @@ void check_for_update() {
         current_exe = std::filesystem::read_symlink("/proc/self/exe");
 #endif
     } catch (const std::exception& e) {
-        std::cerr << std::format("Failed to get current executable path: {}\n", e.what());
+        spdlog::warn("Failed to get current executable path: {}", e.what());
         std::exit(1);
     }
 
-    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", current_exe.string(), *asset_url);
+    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", current_exe.string(), asset_url);
     int download_status = std::system(download_cmd.c_str());
     if (download_status != 0) {
-        std::cerr << "Download failed\n";
+        spdlog::warn("Download failed (curl exit code: {})", download_status);
         std::exit(1);
     }
 
@@ -266,7 +277,8 @@ int main(int argc, char* argv[]) {
         }
 
         if (cli_args.update) {
-            check_for_update();
+            auto config = ConfigReader::read_config();
+            check_for_update(config);
             return 0;
         }
 

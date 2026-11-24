@@ -14,26 +14,23 @@ project(${AW_PROJECT_NAME} VERSION ${AW_PROJECT_VERSION} LANGUAGES CXX)
 aw_project_setup(PREFIX GITSYNC BUILD_TESTS)
 aw_check_cxx23_runtime()
 
-# Fetch dependencies first
-FetchContent_Declare(
-    nlohmann_json
+include(DependencyCache)
+
+# Fetch dependencies
+aw_fetch_dependency(
+    NAME nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3
-    GIT_SHALLOW TRUE
-    FIND_PACKAGE_ARGS NAMES nlohmann_json
-)
+    OPTIONS
+        JSON_BuildTests OFF)
 
-FetchContent_Declare(
-    spdlog
+aw_fetch_dependency(
+    NAME spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG v1.14.1
-    GIT_SHALLOW TRUE
-    FIND_PACKAGE_ARGS NAMES spdlog
-)
-
-set(FETCHCONTENT_QUIET OFF)
-set(FETCHCONTENT_TIMEOUT 180)
-FetchContent_MakeAvailable(nlohmann_json spdlog)
+    OPTIONS
+        SPDLOG_BUILD_TESTS OFF
+        SPDLOG_BUILD_EXAMPLE OFF)
 
 # Create core library with dependencies linked
 include(Library/Target)

@@ -30,6 +30,9 @@ void PartialConfigSettings::merge(const PartialConfigSettings& local) {
     if (local.exclude_remotes) {
         exclude_remotes = local.exclude_remotes;
     }
+    if (local.update_check_url) {
+        update_check_url = local.update_check_url;
+    }
     if (local.remote_urls) {
         if (remote_urls) {
             /* Merge new entries into existing map (extends rather than replaces) */
@@ -55,6 +58,8 @@ ConfigSettings PartialConfigSettings::into_final_settings() const {
         .exclude_branches = exclude_branches.value_or(std::vector<std::string>{}),
         .include_remotes = include_remotes.value_or(std::vector<std::string>{}),
         .exclude_remotes = exclude_remotes.value_or(std::vector<std::string>{"upstream", "base"}),
+        .update_check_url = update_check_url.value_or(
+            "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION"),
     };
 }
 

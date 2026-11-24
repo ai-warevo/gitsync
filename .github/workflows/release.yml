@@ -142,6 +142,7 @@ jobs:
           "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
           "SshKeyTypes": "ed25519,rsa",
           "MaxRetries": 3,
+          "UpdateCheckUrl": "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
           "RemoteUrls": {
             "backup": "git@github.com:username/backup.git"
           },

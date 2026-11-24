@@ -105,6 +105,7 @@ PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& 
     result.remote_branch_template = get_string(j, "remote_branch_template", "RemoteBranchTemplate");
     result.source_remote_name = get_string(j, "source_remote_name", "SourceRemoteName");
     result.ssh_key_types = get_string(j, "ssh_key_types", "SshKeyTypes");
+    result.update_check_url = get_string(j, "update_check_url", "UpdateCheckUrl");
     result.remote_urls = get_object(j, "remote_urls", "RemoteUrls");
     result.max_retries = get_int(j, "max_retries", "MaxRetries");
     result.include_branches = get_array(j, "include_branches", "IncludeBranches");

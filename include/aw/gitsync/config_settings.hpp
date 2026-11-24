@@ -20,6 +20,7 @@ struct ConfigSettings {
     std::vector<std::string> exclude_branches;
     std::vector<std::string> include_remotes;
     std::vector<std::string> exclude_remotes;
+    std::string update_check_url;
 };
 
 /// Intermediate structure for partial deserialization and merging of config layers
@@ -34,6 +35,7 @@ struct PartialConfigSettings {
     std::optional<std::vector<std::string>> exclude_branches;
     std::optional<std::vector<std::string>> include_remotes;
     std::optional<std::vector<std::string>> exclude_remotes;
+    std::optional<std::string> update_check_url;
 
     /// Merges local config settings on top of current settings.
     /// Remote URLs are merged (extended), other fields are replaced if present.
@@ -41,7 +43,8 @@ struct PartialConfigSettings {
 
     /// Converts partial config to final ConfigSettings with defaults.
     /// Defaults: LogLevel="info", SourceRemoteName="origin",
-    /// RemoteBranchTemplate="%owner%/%reponame%/%branchname%", RemoteUrls={}, SshKeyTypes=""
+    /// RemoteBranchTemplate="%owner%/%reponame%/%branchname%", RemoteUrls={}, SshKeyTypes="",
+    /// UpdateCheckUrl="https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION"
     [[nodiscard]] ConfigSettings into_final_settings() const;
 };
 
