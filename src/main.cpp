@@ -248,8 +248,9 @@ void print_help() {
 int main(int argc, char* argv[]) {
     try {
         std::vector<std::string> args;
+        args.reserve(argc);
         for (int i = 0; i < argc; ++i) {
-            args.push_back(argv[i]);
+            args.emplace_back(argv[i]);
         }
 
         CliArgs cli_args = parse_cli_args(args);

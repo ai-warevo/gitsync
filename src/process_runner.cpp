@@ -41,12 +41,12 @@ ProcessOutput ProcessRunner::run(const std::string& file_name,
 
     std::string full_cmd = cmd_line + " 2>&1";
     std::FILE* pipe = popen(full_cmd.c_str(), "r");
-    if (!pipe) {
+    if (pipe == nullptr) {
         throw std::runtime_error("Failed to execute command: " + file_name);
     }
 
     std::string stdout_str;
-    std::array<char, 128> buffer;
+    std::array<char, 128> buffer{};
     while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
         stdout_str += buffer.data();
     }

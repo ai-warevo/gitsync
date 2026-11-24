@@ -28,45 +28,41 @@ permissions:
   actions: write
 
 jobs:
-  build-linux:
-    name: Build Linux binary
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ai-warevo/ci-cpp23
-      options: --user root
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-
-      - name: Configure & Build
-        uses: ai-warevo/.github/.github/actions/cmake-build@main
-        with:
-          source_dir: .
-          build_dir: build/release
-          build_type: Release
-          extra_args: -DGITSYNC_BUILD_TESTS=OFF
-
-      - name: Strip binary
-        run: strip build/release/gitsync
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: gitsync-linux
-          path: build/release/gitsync
-          if-no-files-found: error
-
-  build-windows:
-    name: Build Windows binary
-    runs-on: windows-latest
+  build:
+    name: Build ${{ matrix.os-label }} binary
+    runs-on: ${{ matrix.runs-on }}
+    container: ${{ matrix.container }}
+    strategy:
+      matrix:
+        include:
+          - os-label: Linux
+            runs-on: ubuntu-latest
+            container: '{"image": "ghcr.io/ai-warevo/ci-cpp23", "options": "--user root"}'
+            build-dir: build/release
+            artifact-path: build/release/gitsync
+            artifact-name: gitsync-linux
+            post-build: strip build/release/gitsync
+            setup-env: false
+            sign: false
+          - os-label: Windows
+            runs-on: windows-latest
+            container: null
+            build-dir: build/msvc
+            artifact-path: build/msvc/Release/gitsync.exe
+            artifact-name: gitsync-windows
+            post-build: ''
+            setup-env: true
+            sign: true
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup MSVC environment
+        if: ${{ matrix.setup-env }}
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Import code signing certificate
+        if: ${{ matrix.sign }}
         uses: ai-warevo/.github/.github/actions/windows-code-sign@main
         with:
           certificate_secret: ${{ secrets.SIGNING_CERTIFICATE }}
@@ -76,22 +72,26 @@ jobs:
         uses: ai-warevo/.github/.github/actions/cmake-build@main
         with:
           source_dir: .
-          build_dir: build/msvc
+          build_dir: ${{ matrix.build-dir }}
           build_type: Release
-          config: Release
+          config: ${{ matrix.os-label == 'Windows' && 'Release' || '' }}
           extra_args: -DGITSYNC_BUILD_TESTS=OFF
+
+      - name: Post-build (strip binary)
+        if: ${{ matrix.post-build != '' }}
+        run: ${{ matrix.post-build }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: gitsync-windows
-          path: build/msvc/Release/gitsync.exe
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
           if-no-files-found: error
 
   collect-artifacts:
     name: Collect release artifacts
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows]
+    needs: [build]
     steps:
       - name: Download Linux artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -131,46 +131,57 @@ jobs:
         - Linux: `gitsync`
         - Windows: `gitsync.exe`
 
-        **Quick setup — Linux:**
-        ```bash
-        chmod +x gitsync
-        sudo mv gitsync /usr/local/bin/gitsync
+        **Configuration example:**
 
-        mkdir -p ~/.gitsync
-        cat > ~/.gitsync/config.json <<EOF
+        Create `~/.gitsync/config.json` (or `%USERPROFILE%\.gitsync\config.json` on Windows):
+
+        ```json
         {
           "LogLevel": "info",
           "SourceRemoteName": "origin",
           "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
+          "SshKeyTypes": "ed25519,rsa",
+          "MaxRetries": 3,
           "RemoteUrls": {
             "backup": "git@github.com:username/backup.git"
-          }
+          },
+          "IncludeBranches": ["main", "develop"],
+          "ExcludeBranches": [],
+          "IncludeRemotes": ["origin", "backup"],
+          "ExcludeRemotes": []
         }
-        EOF
+        ```
 
+        **Quick setup — Linux:**
+        ```bash
+        chmod +x gitsync
+        sudo mv gitsync /usr/local/bin/gitsync
+        mkdir -p ~/.gitsync
+        cp config.json ~/.gitsync/
         gitsync
         ```
 
         **Quick setup — Windows (PowerShell):**
         ```powershell
         Move-Item .\gitsync.exe C:\Windows\gitsync.exe
-
         New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.gitsync"
-        @"
-        {
-          "LogLevel": "info",
-          "SourceRemoteName": "origin",
-          "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
-          "RemoteUrls": {
-            "backup": "git@github.com:username/backup.git"
-          }
-        }
-        "@ | Set-Content "$env:USERPROFILE\.gitsync\config.json"
-
+        Copy-Item config.json "$env:USERPROFILE\.gitsync\"
         gitsync
         ```
 
-        **Configuration hierarchy:** gitsync merges configs from three levels — **global** (`~/.gitsync/config.json`), **organization** (`.gitsync/config.json` in parent dirs), and **repository** (`.gitsync/config.json` in the working dir). Later levels override earlier ones, so you can set defaults globally and override per-project.
+        **Configuration hierarchy:** gitsync merges configs from three levels — **global** (`~/.gitsync/config.json`), **organization** (`.gitsync/config.json` in parent dirs), and **repository** (`.gitsync/config.json` in the working dir). Later levels override earlier ones.
+
+        **Configuration options:**
+        - `LogLevel`: Logging level (info, debug, error)
+        - `SourceRemoteName`: Default remote to sync from
+        - `RemoteBranchTemplate`: Branch naming with `%owner%`, `%reponame%`, `%branchname%` placeholders
+        - `SshKeyTypes`: Comma-separated SSH key types (e.g., ed25519,rsa)
+        - `MaxRetries`: Maximum retry attempts for operations
+        - `RemoteUrls`: Map of remote names to Git URLs
+        - `IncludeBranches`: Branches to sync (empty = all)
+        - `ExcludeBranches`: Branches to skip
+        - `IncludeRemotes`: Remotes to sync (empty = all)
+        - `ExcludeRemotes`: Remotes to skip
 
         See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
     permissions:

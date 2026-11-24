@@ -116,6 +116,9 @@ Checks:
   - '-readability-avoid-nested-conditional-operator'
   # Isolate declarations: multiple declarations for clarity (HTTP request parsing)
   - '-readability-isolate-declaration'
+  # Ranges: std::find with iterators is idiomatic; ranges require C++20 and add complexity
+  - '-modernize-use-ranges'
+  - '-boost-use-ranges'
 
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^(include|src)/'
