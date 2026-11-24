@@ -1,4 +1,4 @@
-# gitsync
+# aw::gitsync
 
 [![CI](https://github.com/ai-warevo/gitsync/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-warevo/gitsync/actions/workflows/ci.yml)
 [![Coverage](https://raw.githubusercontent.com/ai-warevo/gitsync/badges/coverage.svg)](https://github.com/ai-warevo/gitsync)
