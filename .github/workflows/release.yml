@@ -1,13 +1,4 @@
-# Release — build binaries, promote changelog, and publish GitHub Release
-#
-# Triggered on:
-#   - Tag push (v*)
-#   - Manual workflow_dispatch for dry-run or override version
-#
-# When triggered via workflow_dispatch:
-#   - Generates CHANGELOG.md from git log
-#   - Builds binaries for Linux + Windows
-#   - Publishes release with artifacts
+# Release — build gitsync binaries and publish
 
 name: Release
 
@@ -28,8 +19,15 @@ permissions:
   actions: write
 
 jobs:
+  resolve-version:
+    name: Resolve version
+    uses: ai-warevo/.github/.github/workflows/reusable-release-resolve.yml@main
+    with:
+      version: ${{ inputs.version || 'auto' }}
+
   build:
     name: Build ${{ matrix.os-label }} binary
+    needs: resolve-version
     runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
     strategy:
@@ -56,6 +54,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Update VERSION file
+        run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
 
       - name: Setup MSVC environment
         if: ${{ matrix.setup-env }}
@@ -114,10 +115,10 @@ jobs:
 
   release:
     name: Publish release
-    needs: collect-artifacts
-    uses: ai-warevo/.github/.github/workflows/reusable-release.yml@main
+    needs: [resolve-version, collect-artifacts]
+    uses: ai-warevo/.github/.github/workflows/reusable-release-commit-publish.yml@main
     with:
-      version: ${{ inputs.version || 'auto' }}
+      version: ${{ needs.resolve-version.outputs.release_version_stripped }}
       artifact_name: gitsync-release-binaries
       artifact_directory: artifacts
       what-included: |
@@ -185,6 +186,3 @@ jobs:
         - `ExcludeRemotes`: Remotes to skip
 
         See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
-    permissions:
-      contents: write
-      actions: write
