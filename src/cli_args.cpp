@@ -38,7 +38,7 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
                 if (result.jobs < 1 || result.jobs > max_jobs) {
                     throw std::runtime_error("Jobs must be between 1 and " + std::to_string(max_jobs));
                 }
-            } catch (const std::exception& e) {
+            } catch (const std::exception&) {
                 throw std::runtime_error(std::string("Invalid --jobs value: ") + std::string(value));
             }
         } else if (arg == "--jobs" || arg == "-j") {
@@ -52,7 +52,7 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
                 if (result.jobs < 1 || result.jobs > max_jobs) {
                     throw std::runtime_error("Jobs must be between 1 and " + std::to_string(max_jobs));
                 }
-            } catch (const std::exception& e) {
+            } catch (const std::exception&) {
                 throw std::runtime_error(std::string("Invalid --jobs value: ") + args[i]);
             }
         } else if (arg == "-d") {

@@ -3,9 +3,6 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -81,7 +78,7 @@ jobs:
           build_dir: ${{ matrix.build-dir }}
           build_type: Release
           config: ${{ matrix.os-label == 'Windows' && 'Release' || '' }}
-          extra_args: -DGITSYNC_BUILD_TESTS=OFF
+          extra_args: -DGITSYNC_BUILD_TESTS=OFF -DGITSYNC_WARNINGS_AS_ERRORS=ON
 
       - name: Check build output exists
         run: |

@@ -32,7 +32,7 @@ nlohmann::json yaml_to_json(std::istream& input) {
             continue;
         }
 
-        int current_indent = indent_pos;
+        int current_indent = static_cast<int>(indent_pos);
         std::string content = line.substr(indent_pos);
 
         /* Flush sequence if we decreased indent */

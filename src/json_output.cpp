@@ -58,7 +58,14 @@ static std::string format_timestamp() {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
     std::ostringstream oss;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
     oss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%SZ");
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     return oss.str();
 }
 
