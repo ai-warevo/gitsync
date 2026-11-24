@@ -1,7 +1,12 @@
 # aw::gitsync
 
-[![CI](https://github.com/ai-warevo/gitsync/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-warevo/gitsync/actions/workflows/ci.yml)
+[![C++23](https://img.shields.io/badge/C++-%2300599C.svg?logo=c%2B%2B&logoColor=white)](https://cppreference.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage](https://raw.githubusercontent.com/ai-warevo/gitsync/badges/coverage.svg)](https://github.com/ai-warevo/gitsync)
+<br />
+[![PR Build](https://github.com/ai-warevo/gitsync/actions/workflows/pr-build.yml/badge.svg)](https://github.com/ai-warevo/gitsync/actions/workflows/pr-build.yml)
+[![Weekly Deep](https://github.com/ai-warevo/gitsync/actions/workflows/weekly-deep.yml/badge.svg)](https://github.com/ai-warevo/gitsync/actions/workflows/weekly-deep.yml)
+[![Release](https://github.com/ai-warevo/gitsync/actions/workflows/release.yml/badge.svg)](https://github.com/ai-warevo/gitsync/actions/workflows/release.yml)
 
 A modern C++23 utility for synchronizing Git repositories across multiple remotes.
 
