@@ -14,7 +14,7 @@ json JsonOutput::to_json() const {
     j["timestamp"] = timestamp;
     j["duration"] = duration;
 
-    // Synced remotes
+    /* Synced remotes array */
     json remotes_array = json::array();
     for (const auto& remote : synced_remotes) {
         json remote_obj;
@@ -37,14 +37,14 @@ json JsonOutput::to_json() const {
     }
     j["synced_remotes"] = remotes_array;
 
-    // Warnings
+    /* Warnings array */
     json warnings_array = json::array();
     for (const auto& warning : warnings) {
         warnings_array.push_back(warning);
     }
     j["warnings"] = warnings_array;
 
-    // Errors
+    /* Errors array */
     json errors_array = json::array();
     for (const auto& error : errors) {
         errors_array.push_back(error);

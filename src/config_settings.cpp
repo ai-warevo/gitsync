@@ -32,7 +32,7 @@ void PartialConfigSettings::merge(const PartialConfigSettings& local) {
     }
     if (local.remote_urls) {
         if (remote_urls) {
-            // Extend existing map with new entries
+            /* Merge new entries into existing map (extends rather than replaces) */
             for (const auto& [key, value] : *local.remote_urls) {
                 (*remote_urls)[key] = value;
             }

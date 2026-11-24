@@ -11,7 +11,11 @@ namespace aw::gitsync {
 
 namespace {
 
-// Helper: get string with dual-convention support
+/*
+  Helpers that support both snake_case and PascalCase field names during deserialization.
+  snake_case takes precedence if both are present.
+*/
+
 std::optional<std::string> get_string(const json& j, const char* snake_name,
                                       const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_string()) {
@@ -23,7 +27,6 @@ std::optional<std::string> get_string(const json& j, const char* snake_name,
     return std::nullopt;
 }
 
-// Helper: get int with dual-convention support
 std::optional<int> get_int(const json& j, const char* snake_name, const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_number_integer()) {
         return j[snake_name].get<int>();
@@ -34,7 +37,6 @@ std::optional<int> get_int(const json& j, const char* snake_name, const char* pa
     return std::nullopt;
 }
 
-// Helper: get object with dual-convention support
 std::optional<std::map<std::string, std::string>> get_object(const json& j,
                                                                const char* snake_name,
                                                                const char* pascal_name) {
@@ -59,7 +61,6 @@ std::optional<std::map<std::string, std::string>> get_object(const json& j,
     return std::nullopt;
 }
 
-// Helper: get array with dual-convention support
 std::optional<std::vector<std::string>> get_array(const json& j, const char* snake_name,
                                                    const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_array()) {

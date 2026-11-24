@@ -1,0 +1,212 @@
+# gitsync v1.0.0 Release - Complete Task Index
+
+## 📋 Documentation
+
+**Start here:**
+- **[MASTER_SUMMARY_v1.0.0.md](MASTER_SUMMARY_v1.0.0.md)** — Overview of all 7 tasks, schedule, breaking changes
+- **[BREAKING_CHANGES_v1.0.0.md](BREAKING_CHANGES_v1.0.0.md)** — Detailed plan for each task
+- **[PUBLIC_API_STABILIZATION.md](PUBLIC_API_STABILIZATION.md)** — Deep dive on Task 7
+
+---
+
+## 🎯 Individual Task Cards
+
+Each task is a self-contained document with requirements, implementation plan, and acceptance criteria.
+
+| # | Task | Priority | Complexity | Sessions | File |
+|---|------|----------|-----------|----------|------|
+| 1 | Config: YAML + snake_case | 🔴 Critical | 🔴 High | 1 | [task_01_config_yaml_snake_case.md](tasks/task_01_config_yaml_snake_case.md) |
+| 2 | CLI: dry-run, verbosity, JSON | 🟢 High | 🟡 Medium | 1 | [task_02_cli_flags.md](tasks/task_02_cli_flags.md) |
+| 3 | Branch/remote filtering | 🟢 High | 🟡 Medium | 1 | [task_03_branch_remote_filtering.md](tasks/task_03_branch_remote_filtering.md) |
+| 4a | Parallel remote pushes | 🟡 Medium | 🔴 High | 1 | [task_04a_parallel_pushes.md](tasks/task_04a_parallel_pushes.md) |
+| 4b | Retry logic + backoff | 🟢 High | 🟡 Medium | 1 | [task_04b_retry_logic.md](tasks/task_04b_retry_logic.md) |
+| 5 | Exit codes standardization | 🟢 High | 🟢 Low | 0.5 | [task_05_exit_codes.md](tasks/task_05_exit_codes.md) |
+| 6 | JSON output + permissions check | 🟡 Medium | 🟢 Low | 0.5 | [task_06_json_output_permissions.md](tasks/task_06_json_output_permissions.md) |
+| 7 | Public API stabilization | 🟡 Medium | 🟡 Medium | 1 | [task_07_public_api_stabilization.md](tasks/task_07_public_api_stabilization.md) |
+
+---
+
+## 🗂️ Directory Structure
+
+```
+gitsync/
+├── tasks/                                      # Task specifications
+│   ├── task_01_config_yaml_snake_case.md
+│   ├── task_02_cli_flags.md
+│   ├── task_03_branch_remote_filtering.md
+│   ├── task_04a_parallel_pushes.md
+│   ├── task_04b_retry_logic.md
+│   ├── task_05_exit_codes.md
+│   ├── task_06_json_output_permissions.md
+│   └── task_07_public_api_stabilization.md
+├── docs/                                       # Documentation
+│   ├── README.md                               # Config guide (needs update)
+│   ├── LIBRARY_USAGE.md                        # NEW: Library integration
+│   └── STAR.md
+├── MASTER_SUMMARY_v1.0.0.md                   # Overall release plan
+├── BREAKING_CHANGES_v1.0.0.md                 # Detailed task breakdown
+├── PUBLIC_API_STABILIZATION.md                # API design & strategy
+└── INDEX.md                                    # THIS FILE
+```
+
+---
+
+## 📌 Key Decisions & Assumptions
+
+**Confirmed:**
+- ✅ Namespace remains `aw::gitsync` (consistent with ai-warevo projects)
+- ✅ YAML parser: `yaml-cpp` library (robust, well-maintained)
+- ✅ Parallelism: `std::async` + `std::future` (no new dependencies)
+- ✅ Retry backoff: Exponential 2^(attempt-1) seconds
+- ✅ Default remotes excluded: `["upstream", "base"]`
+- ✅ Default retries: 1 (try twice total)
+- ✅ Default branches included: `["*"]` (all)
+
+---
+
+## 🚀 Implementation Order
+
+**Recommended sequential sessions:**
+
+```
+Session 1: Task 1 (Config foundation — required by all others)
+           ↓
+Session 2: Task 2 (CLI framework — needed for Task 4a)
+Session 3: Task 3 (Filtering — independent, valuable feature)
+           ↓
+Session 4: Task 4a (Parallel — depends on Task 2)
+           ↓
+Session 5: Task 4b (Retry — depends on Task 1)
+           ↓
+Session 6: Task 5 (Exit codes) + Task 6 (JSON/perms)
+           ↓
+Session 7: Task 7 (Public API — final polish)
+```
+
+---
+
+## ✅ Breaking Changes Summary
+
+**Configuration field naming (DUAL CONVENTION — NO MIGRATION REQUIRED):**
+```
+// Both formats work:
+LogLevel or log_level
+SourceRemoteName or source_remote_name
+RemoteBranchTemplate or remote_branch_template
+RemoteUrls or remote_urls
+SshKeyTypes or ssh_key_types
+// If both present, snake_case takes precedence
+```
+
+✅ **Existing configs continue to work as-is** — no changes required!
+
+**Exit codes changed:**
+- 0 = success (unchanged)
+- 2 = partial success (new)
+- 3 = config error (new)
+- 4 = git error (new)
+- 5 = permission error (new)
+
+**New default behavior:**
+- `exclude_remotes` defaults to `["upstream", "base"]` (may prevent some sync operations)
+
+---
+
+## 🧪 Testing
+
+Each task includes:
+- ✅ Unit tests (mocked dependencies)
+- ✅ Integration tests (real git, local only)
+- ✅ Error cases (config, git, permissions)
+
+**Run all tests:**
+```bash
+cmake --preset clang18-libcxx
+cmake --build build/clang18-libcxx
+ctest --preset clang18-libcxx --output-on-failure
+```
+
+---
+
+## 📚 Documentation Updates
+
+**Files to create/update:**
+
+| File | Type | Note |
+|------|------|------|
+| `docs/LIBRARY_USAGE.md` | CREATE | New library integration guide |
+| `README.md` | UPDATE | Add library section, new flags, exit codes |
+| `docs/README.md` | UPDATE | Add YAML examples, snake_case fields |
+| `CHANGELOG.md` | AUTO | Generated by CI on release |
+
+---
+
+## 🎓 Quick Reference
+
+### Configuration (Task 1)
+- **Formats:** JSON (existing) + YAML (new)
+- **Fields:** snake_case (new convention)
+- **New fields:** `max_retries`, `include_branches`, `exclude_branches`, `include_remotes`, `exclude_remotes`
+
+### CLI (Task 2)
+- **Flags:** `-d/--dry-run`, `-vv/--verbose`, `-q/--quiet`, `--json`
+- **Dry-run:** Preview without pushing
+- **JSON:** Structured output for CI
+
+### Filtering (Task 3)
+- **Branches:** Glob patterns (e.g., `release/*`)
+- **Remotes:** Exact names
+- **Logic:** Include if matches include pattern AND not in exclude list
+
+### Parallelism (Task 4a)
+- **Flag:** `--jobs=N` (default 1)
+- **Concurrency:** N remotes pushed in parallel
+- **Safety:** No data races, thread-safe result aggregation
+
+### Retry (Task 4b)
+- **Config:** `max_retries` (default 1 = 2 total attempts)
+- **Backoff:** Exponential 2^(attempt-1) seconds
+- **Logging:** Each attempt logged at DEBUG
+
+### Exit Codes (Task 5)
+- 0 = success, 1 = error, 2 = partial, 3 = config, 4 = git, 5 = permission
+
+### JSON/Perms (Task 6)
+- **JSON:** Full result schema with metadata
+- **Perms:** Warn if `.gitsync/config.json` is world-readable
+
+### Public API (Task 7)
+- **Stable:** `ConfigSettings`, `ConfigReader`, `GitSyncService`, `ProcessRunner`
+- **Internal:** `KnownHostsService`, `utils.hpp` (marked with comments)
+- **Library:** Use `#include <aw/gitsync/public/gitsync.hpp>`
+
+---
+
+## ❓ Common Questions
+
+**Q: Can I skip Task 7 (Public API)?**  
+A: No, it's low-complexity and important for professional v1.0.0 stability messaging.
+
+**Q: Can I combine Task 4a and 4b?**  
+A: Yes, but separately within same session is cleaner. Keep retry generic, parallelism optional.
+
+**Q: Should old configs (PascalCase) still work?**  
+A: Deprecation warning, but fail to load. This is a breaking change by design for v1.0.
+
+**Q: Can users opt-out of new defaults (exclude_remotes)?**  
+A: Yes, explicitly set `exclude_remotes: []` in config to include all.
+
+**Q: Is Windows fully supported?**  
+A: Yes, all tasks tested on Windows. Task 6 (permissions) has platform-specific notes.
+
+---
+
+## 📞 Contact & Support
+
+For questions about specific tasks, refer to the task document. For overall release strategy, see MASTER_SUMMARY_v1.0.0.md.
+
+---
+
+**Last updated:** 2026-11-24  
+**Release target:** v1.0.0 (Breaking changes release)  
+**Status:** Fully planned, ready for implementation

@@ -11,7 +11,10 @@
 namespace aw::gitsync {
 
 namespace {
-// Platform-safe getenv wrapper
+/*
+  Wrapper for std::getenv with platform-specific secure variants.
+  Uses _dupenv_s on Windows (safe) and std::getenv on Unix.
+*/
 std::optional<std::string> safe_getenv(const char* name) {
 #ifdef _WIN32
     char* buffer = nullptr;
@@ -64,11 +67,10 @@ std::vector<std::string> KnownHostsService::get_hosts() {
         try {
             hosts.push_back(parse_host(url));
         } catch (...) {
-            // Skip invalid URLs
+            /* Silently skip URLs that cannot be parsed (defensive) */
         }
     }
 
-    // Sort and deduplicate
     std::sort(hosts.begin(), hosts.end());
     hosts.erase(std::unique(hosts.begin(), hosts.end()), hosts.end());
 
@@ -76,7 +78,12 @@ std::vector<std::string> KnownHostsService::get_hosts() {
 }
 
 std::filesystem::path KnownHostsService::get_known_hosts_path() {
-    // Try to get SSH directory
+    /*
+      Determine SSH directory based on platform.
+      Windows: %USERPROFILE%\.ssh
+      Unix: $HOME/.ssh
+      Fallback to current dir if env vars unavailable.
+    */
     std::filesystem::path ssh_dir;
 #ifdef _WIN32
     if (auto userprofile = safe_getenv("USERPROFILE")) {
@@ -95,7 +102,7 @@ std::filesystem::path KnownHostsService::get_known_hosts_path() {
     try {
         std::filesystem::create_directories(ssh_dir);
     } catch (...) {
-        // Ignore errors in creating directory
+        /* Directory creation may fail (permissions); continue anyway */
     }
 
     return ssh_dir / "known_hosts";
@@ -111,7 +118,7 @@ KnownHostsService::load_known_hosts(const std::filesystem::path& known_hosts_pat
     std::ifstream file(known_hosts_path);
     std::string line;
     while (std::getline(file, line)) {
-        // Trim leading/trailing whitespace
+        /* Trim leading/trailing whitespace */
         auto start = line.begin();
         while (start != line.end() && std::isspace(*start)) {
             ++start;
@@ -132,7 +139,10 @@ KnownHostsService::load_known_hosts(const std::filesystem::path& known_hosts_pat
 std::vector<std::string>
 KnownHostsService::build_updated_known_hosts(const std::vector<std::string>& existing,
                                              const std::vector<std::string>& hosts) {
-    // Keep lines that don't match any host
+    /*
+      Preserve lines that don't match any of the target hosts (user-added entries),
+      then append newly scanned entries, deduplicate, and sort.
+    */
     std::vector<std::string> preserved;
     for (const auto& line : existing) {
         bool matches = false;
@@ -147,11 +157,9 @@ KnownHostsService::build_updated_known_hosts(const std::vector<std::string>& exi
         }
     }
 
-    // Add newly scanned entries
     auto scanned = scan_hosts(hosts);
     preserved.insert(preserved.end(), scanned.begin(), scanned.end());
 
-    // Sort and deduplicate
     std::sort(preserved.begin(), preserved.end());
     preserved.erase(std::unique(preserved.begin(), preserved.end()), preserved.end());
 
@@ -180,7 +188,7 @@ ProcessOutput KnownHostsService::execute_scan_with_fallback(const std::string& h
     std::vector<std::string> args;
 
     if (!config_.ssh_key_types.empty()) {
-        // Trim ssh_key_types
+        /* Trim ssh_key_types whitespace and add to args if non-empty */
         std::string trimmed = config_.ssh_key_types;
         auto start = trimmed.begin();
         while (start != trimmed.end() && std::isspace(*start)) {
@@ -201,14 +209,17 @@ ProcessOutput KnownHostsService::execute_scan_with_fallback(const std::string& h
 
     auto output = process_runner_->run("ssh-keyscan", args);
 
-    // If stdout is empty and we used ssh_key_types, retry without the type filter
+    /*
+      If type-restricted ssh-keyscan returned nothing, retry with unrestricted scan.
+      Some hosts only support certain key types; broad scan as fallback.
+    */
     if (output.stdout_str.empty() && !config_.ssh_key_types.empty()) {
         spdlog::debug("Empty stdout for {} with type flag. Retrying broad scan...", host);
         try {
             auto fallback = process_runner_->run("ssh-keyscan", std::vector<std::string>{host});
             output = fallback;
         } catch (...) {
-            // Use original output on fallback failure
+            /* Fallback failed; use original (empty) output */
         }
     }
 
@@ -217,7 +228,6 @@ ProcessOutput KnownHostsService::execute_scan_with_fallback(const std::string& h
 
 std::vector<std::string> KnownHostsService::parse_scan_output(const ProcessOutput& output,
                                                               const std::string& host) {
-    // Normalize line endings (replace \r with nothing)
     std::string clean_stdout = output.stdout_str;
     clean_stdout.erase(std::remove(clean_stdout.begin(), clean_stdout.end(), '\r'),
                        clean_stdout.end());
@@ -233,7 +243,7 @@ std::vector<std::string> KnownHostsService::parse_scan_output(const ProcessOutpu
     std::string line;
 
     while (std::getline(iss, line)) {
-        // Trim leading/trailing whitespace
+        /* Trim leading/trailing whitespace */
         auto start = line.begin();
         while (start != line.end() && std::isspace(*start)) {
             ++start;
@@ -265,7 +275,7 @@ void KnownHostsService::save_known_hosts(const std::filesystem::path& known_host
 }
 
 bool KnownHostsService::line_is_valid_known_host_line(const std::string& line) {
-    // Trim whitespace and check if non-empty and not a comment
+    /* Skip empty lines and comments (starting with #) */
     std::string trimmed = line;
     trimmed.erase(0, trimmed.find_first_not_of(" \t"));
     trimmed.erase(trimmed.find_last_not_of(" \t") + 1);
@@ -273,13 +283,19 @@ bool KnownHostsService::line_is_valid_known_host_line(const std::string& line) {
 }
 
 bool KnownHostsService::line_matches_host(const std::string& line, const std::string& host) {
-    // Check if line starts with host followed by space, tab, or comma
+    /*
+      known_hosts format: host-pattern key-type encoded-key
+      Check if line starts with the target host followed by space, tab, or comma.
+    */
     return (line.find(host + " ") == 0) || (line.find(host + "\t") == 0) ||
            (line.find(host + ",") == 0);
 }
 
 std::string KnownHostsService::parse_host(const std::string& remote_url) {
-    // Try to parse as SSH URL: git@github.com:owner/repo.git
+    /*
+      Parse SSH URLs (git@host:path) and HTTPS URLs (https://host/path)
+      to extract the hostname.
+    */
     if (remote_url.find("git@") == 0 && remote_url.find(':') != std::string::npos) {
         auto after_at_pos = remote_url.find('@');
         if (after_at_pos != std::string::npos) {
@@ -294,13 +310,10 @@ std::string KnownHostsService::parse_host(const std::string& remote_url) {
         }
     }
 
-    // Try to parse as HTTPS/HTTP URL
-    // Simple regex-free parsing: look for :// and extract host
     auto scheme_end = remote_url.find("://");
     if (scheme_end != std::string::npos) {
         auto after_scheme = remote_url.substr(scheme_end + 3);
 
-        // Find end of host (next slash or end of string)
         auto host_end = after_scheme.find('/');
         if (host_end == std::string::npos) {
             host_end = after_scheme.length();

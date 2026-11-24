@@ -11,10 +11,12 @@
 namespace aw::gitsync {
 
 namespace {
-// Platform-safe getenv wrapper
+/*
+  Wrapper for std::getenv with platform-specific secure variants.
+  Uses _dupenv_s on Windows (safe) and std::getenv on Unix.
+*/
 std::optional<std::string> safe_getenv(const char* name) {
 #ifdef _WIN32
-    // Use secure _dupenv_s on Windows
     char* buffer = nullptr;
     size_t size = 0;
     if (_dupenv_s(&buffer, &size, name) == 0 && buffer != nullptr) {
@@ -51,22 +53,22 @@ ConfigSettings ConfigReader::read_config() {
 }
 
 PartialConfigSettings ConfigReader::read_config_from_path(const std::filesystem::path& config_path) {
-    // Dispatch to appropriate parser based on file extension
+    /*
+      Dispatch based on file extension: .yaml/.yml → YAML, else → JSON.
+      Allows users to mix format (e.g., global JSON + repo YAML).
+    */
     auto ext = config_path.extension();
     
     if (ext == ".yaml" || ext == ".yml") {
         return ConfigParserYaml::parse_file(config_path);
     } else {
-        // Default to JSON
         return ConfigParserJson::parse_file(config_path);
     }
 }
 
 std::vector<std::filesystem::path> ConfigReader::collect_config_paths() {
-    // Check for GITSYNC_CONFIG_PATH environment variable
     auto env_path = safe_getenv("GITSYNC_CONFIG_PATH");
 
-    // Get home directory (use HOME env var on Unix, USERPROFILE on Windows)
     std::optional<std::filesystem::path> home_dir;
 #ifdef _WIN32
     if (auto userprofile = safe_getenv("USERPROFILE")) {
@@ -78,12 +80,11 @@ std::vector<std::filesystem::path> ConfigReader::collect_config_paths() {
     }
 #endif
 
-    // Get current working directory
     std::optional<std::filesystem::path> current_dir;
     try {
         current_dir = std::filesystem::current_path();
     } catch (...) {
-        // Current path might not be accessible
+        /* Current directory may be inaccessible */
     }
 
     return resolve_config_hierarchy(env_path, home_dir, current_dir);
@@ -95,7 +96,10 @@ std::vector<std::filesystem::path> ConfigReader::resolve_config_hierarchy(
     const std::optional<std::filesystem::path>& current_dir) {
     std::vector<std::filesystem::path> paths;
 
-    // If GITSYNC_CONFIG_PATH is set and exists, it takes absolute priority
+    /*
+      Hierarchy: GITSYNC_CONFIG_PATH (absolute override) →
+      ~/.gitsync → ../.gitsync → ./.gitsync
+    */
     if (config_env) {
         auto env_path = std::filesystem::path(*config_env);
         if (std::filesystem::exists(env_path)) {
@@ -104,7 +108,6 @@ std::vector<std::filesystem::path> ConfigReader::resolve_config_hierarchy(
         }
     }
 
-    // Global config: ~/.gitsync/config.json or config.yaml
     if (home_dir) {
         auto json_path = *home_dir / ".gitsync" / "config.json";
         auto yaml_path = *home_dir / ".gitsync" / "config.yaml";
@@ -119,9 +122,7 @@ std::vector<std::filesystem::path> ConfigReader::resolve_config_hierarchy(
         }
     }
 
-    // Organization and repository configs
     if (current_dir) {
-        // Organization config: ../.gitsync/config.json or config.yaml (parent directory)
         if (auto parent = current_dir->parent_path(); parent != current_dir) {
             auto json_path = parent / ".gitsync" / "config.json";
             auto yaml_path = parent / ".gitsync" / "config.yaml";
@@ -142,7 +143,6 @@ std::vector<std::filesystem::path> ConfigReader::resolve_config_hierarchy(
             }
         }
 
-        // Repository config: ./.gitsync/config.json or config.yaml (current directory)
         auto json_path = *current_dir / ".gitsync" / "config.json";
         auto yaml_path = *current_dir / ".gitsync" / "config.yaml";
         auto yml_path = *current_dir / ".gitsync" / "config.yml";

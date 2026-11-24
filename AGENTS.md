@@ -89,4 +89,9 @@ Tests cover:
 - Update README.md if behavior changes
 - Keep this file (AGENTS.md) up-to-date with new rules
 - Link to code examples when rules are complex
-- Comment why, not what (code shows what; comments explain intent)
+
+## C++ comments
+
+- **Explain "Why", not "What":** Delete comments that narrate code (e.g., `// increment i`, `// null check`); keep only those explaining intent, business logic, non-obvious edge cases, or architectural constraints.
+- **Prefer block comments:** Use `/* ... */` for multi-line or standalone comments; use `//` only for rare, ultra-short inline notes or tool directives (`// NOLINT`, `// clang-format`).
+- **Doxygen headers:** Use `/** ... */` only for public API, classes, or functions that need external documentation.

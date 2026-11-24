@@ -17,11 +17,13 @@ namespace aw::gitsync {
 
 ProcessOutput ProcessRunner::run(const std::string& file_name,
                                  const std::vector<std::string>& arguments) {
-    // Build command line
+    /*
+      Platform differences: use _popen/_pclose on Windows, popen/pclose on Unix.
+      Redirect stderr to stdout (2>&1) for unified capture.
+    */
     std::string cmd_line = file_name;
     for (const auto& arg : arguments) {
         cmd_line += " ";
-        // Simple quoting: wrap in quotes if contains spaces
         if (arg.find(' ') != std::string::npos) {
             cmd_line += "\"" + arg + "\"";
         } else {
@@ -37,8 +39,6 @@ ProcessOutput ProcessRunner::run(const std::string& file_name,
     }
     spdlog::debug("Executing command: {} with args: {}", file_name, args_str);
 
-    // Use popen to capture both stdout and stderr
-    // Note: This redirects stderr to stdout for capture
     std::string full_cmd = cmd_line + " 2>&1";
     std::FILE* pipe = popen(full_cmd.c_str(), "r");
     if (!pipe) {
@@ -54,7 +54,9 @@ ProcessOutput ProcessRunner::run(const std::string& file_name,
     int status = pclose(pipe);
     bool success = (status == 0);
 
-    // Trim trailing whitespace from stdout
+    /*
+      Trim trailing whitespace from captured output.
+    */
     while (!stdout_str.empty() && (stdout_str.back() == '\n' || stdout_str.back() == '\r' ||
                                    stdout_str.back() == ' ' || stdout_str.back() == '\t')) {
         stdout_str.pop_back();
@@ -66,7 +68,7 @@ ProcessOutput ProcessRunner::run(const std::string& file_name,
 
     return ProcessOutput{
         .stdout_str = stdout_str,
-        .stderr_str = "", // Merged with stdout above
+        .stderr_str = "", /* Merged with stdout above */
         .success = success,
     };
 }

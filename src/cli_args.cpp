@@ -9,12 +9,11 @@ namespace aw::gitsync {
 CliArgs parse_cli_args(const std::vector<std::string>& args) {
     CliArgs result;
     int max_jobs = static_cast<int>(std::thread::hardware_concurrency());
-    if (max_jobs <= 0) max_jobs = 32;  // Fallback if detection fails
+    if (max_jobs <= 0) max_jobs = 32;  /* Fallback if detection fails */
 
     for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
 
-        // Long-form flags
         if (arg == "--dry-run") {
             result.dry_run = true;
         } else if (arg == "--verbose" || arg == "-vv") {
@@ -31,9 +30,8 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
             result.update = true;
         } else if (arg == "--skip-host" || arg == "-s") {
             result.skip_host = true;
-        }
-        // Jobs flag: --jobs=N or -j N
-        else if (arg.starts_with("--jobs=")) {
+        } else if (arg.starts_with("--jobs=")) {
+            /* --jobs=N form */
             std::string_view value = arg.substr(7);
             try {
                 result.jobs = std::stoi(std::string(value));
@@ -44,7 +42,7 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
                 throw std::runtime_error(std::string("Invalid --jobs value: ") + std::string(value));
             }
         } else if (arg == "--jobs" || arg == "-j") {
-            // Next argument is the value
+            /* -j N form: next argument is the value */
             if (i + 1 >= args.size()) {
                 throw std::runtime_error("--jobs requires a value");
             }
@@ -57,23 +55,18 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
             } catch (const std::exception& e) {
                 throw std::runtime_error(std::string("Invalid --jobs value: ") + args[i]);
             }
-        }
-        // Short-form flags (-d)
-        else if (arg == "-d") {
+        } else if (arg == "-d") {
             result.dry_run = true;
-        }
-        // Unknown flag
-        else if (arg.starts_with('-')) {
+        } else if (arg.starts_with('-')) {
             throw std::runtime_error(std::string("Unknown flag: ") + std::string(arg));
-        }
-        // Positional arguments (not supported yet)
-        else {
+        } else {
+            /* Positional arguments not supported */
             throw std::runtime_error(std::string("Unexpected positional argument: ") +
                                      std::string(arg));
         }
     }
 
-    // Validation: dry-run with json-output is OK, but verbose and quiet together is warning-worthy
+    /* Reject conflicting log-level flags */
     if (result.verbose && result.quiet) {
         throw std::runtime_error("Cannot specify both --verbose and --quiet");
     }

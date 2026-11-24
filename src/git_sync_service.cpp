@@ -87,7 +87,10 @@ std::string GitSyncService::try_get_remote_url(const std::string& remote_name) {
         if (output.success) {
             return output.stdout_str;
         }
-        // If stderr contains "No such remote", return empty
+        /*
+          If git stderr mentions "No such remote", the remote doesn't exist yet;
+          return empty string to signal ensure_remote() to add it.
+        */
         if (output.stderr_str.find("No such remote") != std::string::npos) {
             return "";
         }
@@ -109,7 +112,10 @@ void GitSyncService::ensure_remote(const std::string& remote_name, const std::st
         }
         spdlog::info("{} remote url successfully added", remote_name);
     } else {
-        // Case-insensitive comparison
+        /*
+          Case-insensitive URL comparison: GitHub/GitLab normalize URLs,
+          so "https://github.com/owner/repo" == "https://GITHUB.COM/owner/repo".
+        */
         bool urls_match = std::equal(existing_url.begin(), existing_url.end(), remote_url.begin(),
                                      remote_url.end(), [](unsigned char c1, unsigned char c2) {
                                          return std::tolower(c1) == std::tolower(c2);
@@ -167,22 +173,22 @@ void GitSyncService::push_remote(const std::string& remote_name, const std::stri
 std::string GitSyncService::build_remote_branch(const std::string& template_str,
                                                 const std::string& origin_url,
                                                 const std::string& branch_name) {
-    // Strip scheme (https:// or http://) if present
+    /*
+      Extract repo path from origin URL (handle both SSH and HTTPS formats).
+      SSH: git@github.com:owner/repo.git
+      HTTPS: https://github.com/owner/repo.git
+    */
     std::string without_scheme = origin_url;
     if (without_scheme.find("https://") == 0) {
         without_scheme = without_scheme.substr(8);
     } else if (without_scheme.find("http://") == 0) {
         without_scheme = without_scheme.substr(7);
     }
-
-    // Extract repo part: owner/repo.git
     std::string repo_part;
     auto colon_pos = without_scheme.find(':');
     if (colon_pos != std::string::npos) {
-        // SSH format: git@github.com:owner/repo.git
         repo_part = without_scheme.substr(colon_pos + 1);
     } else {
-        // HTTPS format: github.com/owner/repo.git
         auto slash_pos = without_scheme.find('/');
         if (slash_pos != std::string::npos) {
             repo_part = without_scheme.substr(slash_pos + 1);
@@ -191,12 +197,10 @@ std::string GitSyncService::build_remote_branch(const std::string& template_str,
         }
     }
 
-    // Strip .git suffix
+    /* Strip .git suffix if present (some URLs lack it). */
     if (repo_part.length() >= 4 && repo_part.substr(repo_part.length() - 4) == ".git") {
         repo_part = repo_part.substr(0, repo_part.length() - 4);
     }
-
-    // Extract owner and reponame from "owner/reponame"
     auto slash_pos = repo_part.find('/');
     std::string owner, reponame;
     if (slash_pos != std::string::npos) {
@@ -211,7 +215,7 @@ std::string GitSyncService::build_remote_branch(const std::string& template_str,
         throw std::runtime_error("Invalid origin url: " + origin_url);
     }
 
-    // Replace placeholders
+    /* Replace placeholders: %owner%, %reponame%, %branchname%. */
     std::string result = template_str;
     size_t pos = 0;
     while ((pos = result.find("%owner%", pos)) != std::string::npos) {
@@ -233,7 +237,10 @@ std::string GitSyncService::build_remote_branch(const std::string& template_str,
 }
 
 std::string GitSyncService::sanitize_branch_name(const std::string& name) {
-    // Split by '/', sanitize each component, then rejoin
+    /*
+      Split by '/', sanitize each component (allow alphanumeric, dash, underscore),
+      then rejoin. This prevents git ref errors from invalid characters.
+    */
     std::vector<std::string> components;
     std::string current;
     for (char c : name) {

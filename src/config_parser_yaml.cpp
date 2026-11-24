@@ -9,7 +9,11 @@ namespace aw::gitsync {
 
 namespace {
 
-// Helper: get string with dual-convention support
+/*
+  Helpers that support both snake_case and PascalCase field names during deserialization.
+  snake_case takes precedence if both are present.
+*/
+
 std::optional<std::string> get_string(const YAML::Node& node, const char* snake_name,
                                       const char* pascal_name) {
     if (node[snake_name] && node[snake_name].IsScalar()) {
@@ -21,7 +25,6 @@ std::optional<std::string> get_string(const YAML::Node& node, const char* snake_
     return std::nullopt;
 }
 
-// Helper: get int with dual-convention support
 std::optional<int> get_int(const YAML::Node& node, const char* snake_name,
                            const char* pascal_name) {
     if (node[snake_name] && node[snake_name].IsScalar()) {
@@ -39,7 +42,6 @@ std::optional<int> get_int(const YAML::Node& node, const char* snake_name,
     return std::nullopt;
 }
 
-// Helper: get object with dual-convention support
 std::optional<std::map<std::string, std::string>> get_object(const YAML::Node& node,
                                                                const char* snake_name,
                                                                const char* pascal_name) {
@@ -64,7 +66,6 @@ std::optional<std::map<std::string, std::string>> get_object(const YAML::Node& n
     return std::nullopt;
 }
 
-// Helper: get array with dual-convention support
 std::optional<std::vector<std::string>> get_array(const YAML::Node& node,
                                                    const char* snake_name,
                                                    const char* pascal_name) {

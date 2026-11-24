@@ -7,12 +7,11 @@ bool FilterMatcher::glob_match(std::string_view pattern, std::string_view name) 
 
     while (p < pattern.size() && n < name.size()) {
         if (pattern[p] == '*') {
-            // * matches zero or more characters
             if (p + 1 >= pattern.size()) {
-                // Trailing *, matches rest of string
+                /* Trailing * matches rest of string */
                 return true;
             }
-            // Try to match the rest of pattern at each position in name
+            /* Recursively match rest of pattern at each position in name */
             for (size_t i = n; i <= name.size(); ++i) {
                 if (glob_match(pattern.substr(p + 1), name.substr(i))) {
                     return true;
@@ -20,32 +19,29 @@ bool FilterMatcher::glob_match(std::string_view pattern, std::string_view name) 
             }
             return false;
         } else if (pattern[p] == '?') {
-            // ? matches exactly one character
+            /* ? matches exactly one character */
             ++p;
             ++n;
         } else if (pattern[p] == name[n]) {
-            // Exact character match
             ++p;
             ++n;
         } else {
-            // No match
             return false;
         }
     }
 
-    // Handle remaining * at end of pattern
+    /* Consume any trailing * in pattern */
     while (p < pattern.size() && pattern[p] == '*') {
         ++p;
     }
 
-    // Both must be exhausted for a match
     return p == pattern.size() && n == name.size();
 }
 
 bool FilterMatcher::matches_include(const std::string& name,
                                    const std::vector<std::string>& include_patterns) {
     if (include_patterns.empty()) {
-        // Empty include list = include everything
+        /* Empty include list includes everything (no filtering) */
         return true;
     }
 
