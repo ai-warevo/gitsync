@@ -61,9 +61,8 @@ PartialConfigSettings ConfigReader::read_config_from_path(const std::filesystem:
     
     if (ext == ".yaml" || ext == ".yml") {
         return ConfigParserYaml::parse_file(config_path);
-    } else {
-        return ConfigParserJson::parse_file(config_path);
     }
+    return ConfigParserJson::parse_file(config_path);
 }
 
 std::vector<std::filesystem::path> ConfigReader::collect_config_paths() {
