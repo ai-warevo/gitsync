@@ -166,19 +166,10 @@ jobs:
         run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
         shell: bash
 
-      - name: Update CHANGELOG
-        run: |
-          version="${{ needs.resolve-version.outputs.release_version_stripped }}"
-          date=$(date +%Y-%m-%d)
-          sed -i "s/^\## \[Unreleased\]/## [$version] - $date/" CHANGELOG.md
-          {
-            head -6 CHANGELOG.md
-            echo ""
-            echo "## [Unreleased]"
-            tail -n +7 CHANGELOG.md
-          } > CHANGELOG.md.tmp
-          mv CHANGELOG.md.tmp CHANGELOG.md
-        shell: bash
+      - name: Promote CHANGELOG
+        uses: ai-warevo/.github/.github/actions/changelog-promote@main
+        with:
+          version: ${{ needs.resolve-version.outputs.release_version_stripped }}
 
       - name: Commit and tag
         uses: ai-warevo/.github/.github/actions/release-commit-tag@main
@@ -206,9 +197,19 @@ jobs:
 
       - name: Generate Release Notes
         id: changelog
-        uses: ai-warevo/.github/.github/actions/changelog-release@main
-        with:
-          tag: v${{ needs.resolve-version.outputs.release_version_stripped }}
+        run: |
+          version="${{ needs.resolve-version.outputs.release_version_stripped }}"
+          
+          # Extract release notes from local CHANGELOG.md
+          awk -v ver="$version" '
+            /^## \['"$version"'\]/ { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release_body.md
+          
+          [ -s release_body.md ] || echo "No release notes found" > release_body.md
+          echo "body_path=release_body.md" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Create Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
