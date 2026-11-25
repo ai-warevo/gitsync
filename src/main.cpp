@@ -13,6 +13,7 @@
 #    include <windows.h>
 #endif
 
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 #include "aw/gitsync/cli_args.hpp"
@@ -101,36 +102,39 @@ void print_version() {
   Returns std::nullopt if the asset is not found.
 */
 std::optional<std::string> find_asset_url(std::string_view json_response, std::string_view asset_name) {
-    constexpr std::string_view assets_key = R"("assets":[)";
-    auto assets_pos = json_response.find(assets_key);
-    if (assets_pos == std::string_view::npos) {
+    try {
+        auto json = nlohmann::json::parse(json_response);
+        
+        if (!json.contains("assets") || !json["assets"].is_array()) {
+            spdlog::warn("find_asset_url: 'assets' key not found or not an array");
+            return std::nullopt;
+        }
+        
+        spdlog::debug("find_asset_url: searching for asset '{}'", asset_name);
+        
+        for (const auto& asset : json["assets"]) {
+            if (asset.contains("name") && asset["name"].is_string() && 
+                asset["name"].get<std::string>() == asset_name) {
+                
+                spdlog::debug("find_asset_url: found asset '{}'", asset_name);
+                
+                if (asset.contains("browser_download_url") && asset["browser_download_url"].is_string()) {
+                    std::string url = asset["browser_download_url"].get<std::string>();
+                    spdlog::debug("find_asset_url: URL = {}", url);
+                    return url;
+                }
+                
+                spdlog::warn("find_asset_url: asset '{}' found but browser_download_url missing", asset_name);
+                return std::nullopt;
+            }
+        }
+        
+        spdlog::warn("find_asset_url: asset '{}' not found in assets array", asset_name);
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        spdlog::warn("find_asset_url: JSON parse error: {}", e.what());
         return std::nullopt;
     }
-
-    std::string_view assets_section = json_response.substr(assets_pos + assets_key.size());
-
-    std::string search_pattern = std::format(R"("name":"{}")", asset_name);
-    auto name_pos = assets_section.find(search_pattern);
-    if (name_pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-
-    std::string_view after_name = assets_section.substr(name_pos);
-    
-    /* Find browser_download_url within this asset object (stops at next asset or end of array) */
-    constexpr std::string_view url_key = R"("browser_download_url":")";
-    auto url_pos = after_name.find(url_key);
-    if (url_pos == std::string_view::npos) {
-        return std::nullopt;
-    }
-
-    auto url_start = url_pos + url_key.size();
-    auto url_end = after_name.find('"', url_start);
-    if (url_end == std::string_view::npos) {
-        return std::nullopt;
-    }
-
-    return std::string(after_name.substr(url_start, url_end - url_start));
 }
 
 void check_for_update(const ConfigSettings& config) {
@@ -144,7 +148,7 @@ void check_for_update(const ConfigSettings& config) {
     asset_name = "gitsync";
 #endif
 
-    /* Fetch release info from configured URL (defaults to GitHub main branch) */
+    /* Fetch release info from configured URL (defaults to GitHub main branch VERSION file) */
     const std::string& url = config.update_check_url;
     const std::string curl_cmd = std::format(R"(curl -s "{}")", url);
 
@@ -171,7 +175,7 @@ void check_for_update(const ConfigSettings& config) {
         return;
     }
 
-    /* Parse latest version from GitHub API response */
+    /* Parse latest version from GitHub API response or VERSION file */
     std::string latest_version = parse_latest_version(response, GITSYNC_VERSION);
 
     std::string_view current = GITSYNC_VERSION;
@@ -190,6 +194,31 @@ void check_for_update(const ConfigSettings& config) {
     }
 
     std::cout << std::format("New version available: v{} (current: v{})\n", latest, GITSYNC_VERSION);
+
+    /* If response is plain text (VERSION file), construct GitHub API URL for assets */
+    if (!response.starts_with('{')) {
+        /* Plain text VERSION file — construct GitHub API URL */
+        std::string assets_url = std::format("https://api.github.com/repos/ai-warevo/gitsync/releases/tags/v{}", latest);
+        
+        /* Fetch from GitHub API */
+        const std::string api_curl = std::format(R"(curl -s "{}")", assets_url);
+        FILE* api_pipe = popen(api_curl.c_str(), "r");
+        if (!api_pipe) {
+            spdlog::warn("Failed to run curl for GitHub API");
+            std::exit(1);
+        }
+        
+        response.clear();
+        while (fgets(buffer, sizeof(buffer), api_pipe) != nullptr) {
+            response += buffer;
+        }
+        
+        int api_status = pclose(api_pipe);
+        if (api_status != 0) {
+            spdlog::warn("Failed to fetch release info from GitHub API");
+            std::exit(1);
+        }
+    }
 
     /* Find download URL for the asset */
     auto asset_url = find_asset_url(response, asset_name);
