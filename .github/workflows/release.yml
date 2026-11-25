@@ -34,23 +34,6 @@ jobs:
           force: 'true'
         continue-on-error: true
 
-      - name: Ensure [Unreleased] has entries or add placeholder
-        run: |
-          if ! grep -qE '^### (Breaking|Added|Deprecated|Changed|Removed|Fixed|Security)' CHANGELOG.md; then
-            # No entries, add placeholder
-            {
-              head -8 CHANGELOG.md
-              echo ""
-              echo "### Changed"
-              echo ""
-              echo "- Maintenance release"
-              echo ""
-              tail -n +9 CHANGELOG.md
-            } > CHANGELOG.md.tmp
-            mv CHANGELOG.md.tmp CHANGELOG.md
-          fi
-        shell: bash
-
       - name: Resolve version
         id: version
         uses: ai-warevo/.github/.github/actions/release-version@main
@@ -199,14 +182,14 @@ jobs:
         id: changelog
         run: |
           version="${{ needs.resolve-version.outputs.release_version_stripped }}"
-          
+
           # Extract release notes from local CHANGELOG.md
           awk -v ver="$version" '
             /^## \['"$version"'\]/ { found = 1; next }
             found && /^## \[/ { exit }
             found { print }
           ' CHANGELOG.md > release_body.md
-          
+
           [ -s release_body.md ] || echo "No release notes found" > release_body.md
           echo "body_path=release_body.md" >> $GITHUB_OUTPUT
         shell: bash
