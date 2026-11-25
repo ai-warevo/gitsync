@@ -4,9 +4,9 @@
 # Calls: reusable-sanitizers.yml, reusable-coverage-badge.yml from ai-warevo/.github
 #
 # This workflow runs the comprehensive test suite:
-#   - ASan + UBSan (full test suite in container)
+#   - ASan + UBSan (full test suite with clang-18-libcxx)
 #   - TSan (full test suite + 30x stress repeats on host)
-#   - Coverage (gcovr → badge → GitHub Pages)
+#   - Coverage (gcovr → badge → GitHub Pages with gcc-15)
 
 name: Weekly Deep
 
@@ -25,7 +25,7 @@ jobs:
     with:
       source_dir: .
       build_dir: build
-      container_image: ghcr.io/ai-warevo/ci-cpp23
+      container_image: ghcr.io/ai-warevo/cpp23:clang-18-libcxx
       cmake_sanitize_var: AW_SANITIZE
       cmake_extra_args: '-DGITSYNC_BUILD_TESTS=ON -DGITSYNC_WARNINGS_AS_ERRORS=ON'
       ctest_timeout: 300
@@ -39,7 +39,7 @@ jobs:
     with:
       source_dir: .
       build_dir: build
-      container_image: ghcr.io/ai-warevo/ci-cpp23
+      container_image: ghcr.io/ai-warevo/cpp23:gcc-15
       toolchain: gcc15
       cmake_extra_args: '-DGITSYNC_BUILD_TESTS=ON -DAW_ENABLE_COVERAGE=ON'
       gcovr_source_filter: ''

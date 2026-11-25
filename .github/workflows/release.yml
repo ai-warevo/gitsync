@@ -118,7 +118,7 @@ jobs:
         include:
           - os-label: Linux
             runs-on: ubuntu-latest
-            container: ghcr.io/ai-warevo/ci-cpp23
+            container: ghcr.io/ai-warevo/cpp23:gcc-15
             build-dir: build/release
             artifact-path: build/release/gitsync
             artifact-name: gitsync-linux

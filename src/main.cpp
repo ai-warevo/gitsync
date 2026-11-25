@@ -213,13 +213,12 @@ void check_for_update(const ConfigSettings& config) {
         std::exit(1);
     }
 
+    /* Get platform-specific update file name */
+    const std::string update_file_name = get_update_file_name();
+
     /* Download to parent directory for staged update */
     std::filesystem::path parent_dir = current_exe.parent_path();
-#ifdef _WIN32
-    std::filesystem::path update_file = parent_dir / "gitsync-update.exe";
-#else
-    std::filesystem::path update_file = parent_dir / "gitsync-update";
-#endif
+    std::filesystem::path update_file = parent_dir / update_file_name;
 
     std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", update_file.string(), *asset_url);
     int download_status = std::system(download_cmd.c_str());
@@ -229,7 +228,7 @@ void check_for_update(const ConfigSettings& config) {
     }
 
     /* Perform self-update (replace running binary, restart with --cleanup) */
-    auto [ok, update_err] = self_update(current_exe, "gitsync-update");
+    auto [ok, update_err] = self_update(current_exe, update_file_name);
     if (!ok) {
         spdlog::error("Self-update failed: {}", update_err ? update_err->msg : "unknown error");
         std::exit(1);

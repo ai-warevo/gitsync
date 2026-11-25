@@ -19,6 +19,9 @@ int compare_versions(std::string_view v1, std::string_view v2);
 /// Returns the browser_download_url for the asset, or nullopt if not found.
 std::optional<std::string> find_asset_url(std::string_view json_response, std::string_view asset_name);
 
+/// Get platform-specific update file name (gitsync-update or gitsync-update.exe).
+std::string get_update_file_name();
+
 }  // namespace aw::gitsync
 
 #endif // AW_GITSYNC_UTILS_HPP

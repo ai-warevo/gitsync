@@ -156,3 +156,13 @@ TEST_CASE("find_asset_url extracts Linux binary", "[utils]") {
     REQUIRE(result.has_value());
     REQUIRE(result.value() == "https://github.com/ai-warevo/gitsync/releases/download/v2.0.28/gitsync");
 }
+
+TEST_CASE("get_update_file_name returns platform-specific name", "[utils]") {
+    std::string name = get_update_file_name();
+    
+#ifdef _WIN32
+    REQUIRE(name == "gitsync-update.exe");
+#else
+    REQUIRE(name == "gitsync-update");
+#endif
+}
