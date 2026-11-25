@@ -196,6 +196,7 @@ PartialConfigSettings ConfigParserYaml::parse_file(const std::filesystem::path& 
     result.source_remote_name = get_string(node, "source_remote_name", "SourceRemoteName");
     result.ssh_key_types = get_string(node, "ssh_key_types", "SshKeyTypes");
     result.update_check_url = get_string(node, "update_check_url", "UpdateCheckUrl");
+    result.release_download_url_template = get_string(node, "release_download_url_template", "ReleaseDownloadUrlTemplate");
     result.remote_urls = get_object(node, "remote_urls", "RemoteUrls");
     result.max_retries = get_int(node, "max_retries", "MaxRetries");
     result.include_branches = get_array(node, "include_branches", "IncludeBranches");

@@ -173,45 +173,22 @@ void check_for_update(const ConfigSettings& config) {
 
     std::cout << std::format("New version available: v{} (current: v{})\n", latest, GITSYNC_VERSION);
 
-    /* If response is plain text (VERSION file), construct GitHub API URL for assets */
-    if (!response.starts_with('{')) {
-        /* Plain text VERSION file — construct GitHub API URL */
-        std::string assets_url = std::format("https://api.github.com/repos/ai-warevo/gitsync/releases/tags/v{}", latest);
-        spdlog::info("check_for_update: fetching GitHub API from: {}", assets_url);
-        
-        /* Fetch from GitHub API */
-        const std::string api_curl = std::format(R"(curl -s "{}")", assets_url);
-        FILE* api_pipe = popen(api_curl.c_str(), "r");
-        if (!api_pipe) {
-            spdlog::warn("Failed to run curl for GitHub API");
-            std::exit(1);
-        }
-        
-        response.clear();
-        while (fgets(buffer, sizeof(buffer), api_pipe) != nullptr) {
-            response += buffer;
-        }
-        
-        int api_status = pclose(api_pipe);
-        if (api_status != 0) {
-            spdlog::warn("Failed to fetch release info from GitHub API (curl exit: {})", api_status);
-            std::exit(1);
-        }
-        
-        spdlog::info("check_for_update: GitHub API response length = {} bytes", response.size());
-        if (response.size() < 100) {
-            spdlog::info("check_for_update: GitHub API response: {}", response);
-        } else {
-            spdlog::debug("check_for_update: GitHub API response first 100 chars: {}", response.substr(0, 100));
-        }
+    /* Construct download URL from config template */
+    std::string asset_url = config.release_download_url_template;
+    
+    /* Replace {version} and {filename} placeholders */
+    size_t pos = 0;
+    while ((pos = asset_url.find("{version}", pos)) != std::string::npos) {
+        asset_url.replace(pos, 9, latest);
+        pos += latest.length();
     }
-
-    /* Find download URL for the asset */
-    auto asset_url = find_asset_url(response, asset_name);
-    if (!asset_url) {
-        spdlog::warn("Failed to find download URL for asset: {}", asset_name);
-        std::exit(1);
+    pos = 0;
+    while ((pos = asset_url.find("{filename}", pos)) != std::string::npos) {
+        asset_url.replace(pos, 10, asset_name);
+        pos += asset_name.length();
     }
+    
+    spdlog::info("check_for_update: download URL: {}", asset_url);
 
     std::cout << "Downloading update...\n";
 
@@ -229,7 +206,7 @@ void check_for_update(const ConfigSettings& config) {
     std::filesystem::path parent_dir = current_exe.parent_path();
     std::filesystem::path update_file = parent_dir / update_file_name;
 
-    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", update_file.string(), *asset_url);
+    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", update_file.string(), asset_url);
     int download_status = std::system(download_cmd.c_str());
     if (download_status != 0) {
         spdlog::warn("Download failed (curl exit code: {})", download_status);

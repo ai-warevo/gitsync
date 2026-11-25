@@ -38,6 +38,7 @@ env:
       "SshKeyTypes": "ed25519,rsa",
       "MaxRetries": 3,
       "UpdateCheckUrl": "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
+      "ReleaseDownloadUrlTemplate": "https://github.com/ai-warevo/gitsync/releases/download/v{version}/{filename}",
       "RemoteUrls": {
         "backup": "git@github.com:username/backup.git"
       },

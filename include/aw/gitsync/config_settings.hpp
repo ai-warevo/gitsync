@@ -21,6 +21,7 @@ struct ConfigSettings {
     std::vector<std::string> include_remotes;
     std::vector<std::string> exclude_remotes;
     std::string update_check_url;
+    std::string release_download_url_template;
 };
 
 /// Intermediate structure for partial deserialization and merging of config layers
@@ -36,15 +37,17 @@ struct PartialConfigSettings {
     std::optional<std::vector<std::string>> include_remotes;
     std::optional<std::vector<std::string>> exclude_remotes;
     std::optional<std::string> update_check_url;
+    std::optional<std::string> release_download_url_template;
 
     /// Merges local config settings on top of current settings.
     /// Remote URLs are merged (extended), other fields are replaced if present.
     void merge(const PartialConfigSettings& local);
 
-    /// Converts partial config to final ConfigSettings with defaults.
-    /// Defaults: LogLevel="info", SourceRemoteName="origin",
-    /// RemoteBranchTemplate="%owner%/%reponame%/%branchname%", RemoteUrls={}, SshKeyTypes="",
-    /// UpdateCheckUrl="https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION"
+    /** Converts partial config to final ConfigSettings with defaults.
+        Defaults: LogLevel="info", SourceRemoteName="origin",
+        RemoteBranchTemplate="%owner%/%reponame%/%branchname%", RemoteUrls={}, SshKeyTypes="",
+        UpdateCheckUrl="https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
+        ReleaseDownloadUrlTemplate="https://github.com/ai-warevo/gitsync/releases/download/v{version}/{filename}" */
     [[nodiscard]] ConfigSettings into_final_settings() const;
 };
 
