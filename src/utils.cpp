@@ -181,11 +181,10 @@ std::optional<std::string> find_asset_url(std::string_view json_response, std::s
 }
 
 std::string get_update_file_name() {
-    const std::string update_file_base = "gitsync-update";
 #ifdef _WIN32
-    return update_file_base + ".exe";
+    return std::string(UPDATE_FILE_BASE) + ".exe";
 #else
-    return update_file_base;
+    return std::string(UPDATE_FILE_BASE);
 #endif
 }
 

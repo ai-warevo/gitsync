@@ -7,6 +7,8 @@
 #include <string_view>
 #include <thread>
 
+#include "aw/gitsync/utils.hpp"
+
 #ifdef _WIN32
 #    include <windows.h>
 #elif defined(__APPLE__)
@@ -57,6 +59,17 @@ void cleanup_old_binary(const fs::path& current_exe) {
     for (int i = 0; i < 20; ++i) {
         std::error_code ec;
         if (!fs::exists(old_exe, ec) || fs::remove(old_exe, ec)) {
+            break;
+        }
+        std::this_thread::sleep_for(100ms);
+    }
+
+    /* Also remove update file if it exists */
+    fs::path update_exe = current_exe.parent_path() / get_update_file_name();
+
+    for (int i = 0; i < 20; ++i) {
+        std::error_code ec;
+        if (!fs::exists(update_exe, ec) || fs::remove(update_exe, ec)) {
             return;
         }
         std::this_thread::sleep_for(100ms);

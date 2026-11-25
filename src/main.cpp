@@ -112,6 +112,7 @@ void check_for_update(const ConfigSettings& config) {
 
     /* Fetch release info from configured URL (defaults to GitHub main branch VERSION file) */
     const std::string& url = config.update_check_url;
+    spdlog::info("check_for_update: fetching from URL: {}", url);
     const std::string curl_cmd = std::format(R"(curl -s "{}")", url);
 
     FILE* pipe = popen(curl_cmd.c_str(), "r");
@@ -279,7 +280,7 @@ int main(int argc, char* argv[]) {
         if (cli_args.update) {
             auto config = ConfigReader::read_config();
             check_for_update(config);
-            return 0;
+            return 0;  /* Exit after update check/self-update */
         }
 
         if (cli_args.cleanup) {
@@ -287,6 +288,7 @@ int main(int argc, char* argv[]) {
             if (!err) {
                 cleanup_old_binary(current_exe);
             }
+            return 0;  /* Exit after cleanup */
         }
 
         run_app(cli_args, cli_args.skip_host);
