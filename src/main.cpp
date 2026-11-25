@@ -177,6 +177,7 @@ void check_for_update(const ConfigSettings& config) {
     if (!response.starts_with('{')) {
         /* Plain text VERSION file — construct GitHub API URL */
         std::string assets_url = std::format("https://api.github.com/repos/ai-warevo/gitsync/releases/tags/v{}", latest);
+        spdlog::info("check_for_update: fetching GitHub API from: {}", assets_url);
         
         /* Fetch from GitHub API */
         const std::string api_curl = std::format(R"(curl -s "{}")", assets_url);
@@ -193,8 +194,15 @@ void check_for_update(const ConfigSettings& config) {
         
         int api_status = pclose(api_pipe);
         if (api_status != 0) {
-            spdlog::warn("Failed to fetch release info from GitHub API");
+            spdlog::warn("Failed to fetch release info from GitHub API (curl exit: {})", api_status);
             std::exit(1);
+        }
+        
+        spdlog::info("check_for_update: GitHub API response length = {} bytes", response.size());
+        if (response.size() < 100) {
+            spdlog::info("check_for_update: GitHub API response: {}", response);
+        } else {
+            spdlog::debug("check_for_update: GitHub API response first 100 chars: {}", response.substr(0, 100));
         }
     }
 
