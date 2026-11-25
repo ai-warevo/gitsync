@@ -1,4 +1,4 @@
-# Release — resolve version → build → commit/tag → publish
+# Release — build binaries on Linux + Windows, then publish via reusable workflow
 
 name: Release
 
@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version override (X.Y.Z); use auto to derive from git log'
+        description: 'Version override (X.Y.Z); use auto to derive from CHANGELOG.md'
         required: false
+        default: auto
         type: string
 
 permissions:
@@ -15,48 +16,8 @@ permissions:
   actions: write
 
 jobs:
-  resolve-version:
-    name: Resolve version
-    runs-on: ubuntu-latest
-    outputs:
-      release_version: ${{ steps.version.outputs.release_version }}
-      release_version_stripped: ${{ steps.version.outputs.release_version_stripped }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 0
-
-      - name: Generate CHANGELOG from git log
-        uses: ai-warevo/.github/.github/actions/changelog-generate@main
-        with:
-          force: 'true'
-        continue-on-error: true
-
-      - name: Ensure [Unreleased] exists
-        run: |
-          echo "Before:"
-          head -20 CHANGELOG.md
-          if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
-            # Insert after "# Changelog" line
-            awk '/^# Changelog/ { print; print ""; print "## [Unreleased]"; next } 1' CHANGELOG.md > CHANGELOG.md.tmp
-            mv CHANGELOG.md.tmp CHANGELOG.md
-          fi
-          echo "After:"
-          head -20 CHANGELOG.md
-          echo "Grep check:"
-          grep '^## \[Unreleased\]' CHANGELOG.md || echo "NOT FOUND"
-        shell: bash
-
-      - name: Resolve version
-        id: version
-        uses: ai-warevo/.github/.github/actions/release-version@main
-        with:
-          version: ${{ inputs.version || 'auto' }}
-
   build:
     name: Build ${{ matrix.os-label }} binary
-    needs: resolve-version
     runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
     strategy:
@@ -83,10 +44,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-
-      - name: Update VERSION file
-        run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
-        shell: bash
+        with:
+          fetch-depth: 0
 
       - name: Setup MSVC environment
         if: ${{ matrix.setup-env }}
@@ -140,27 +99,18 @@ jobs:
       - name: Upload final artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: gitsync-release-binaries
+          name: gitsync-release
           path: artifacts/
           if-no-files-found: error
 
   release:
     name: Publish release
-    needs: [resolve-version, collect-artifacts]
-    uses: ai-warevo/.github/.github/workflows/reusable-release-commit-publish.yml@main
+    needs: [collect-artifacts]
+    uses: ai-warevo/.github/.github/workflows/reusable-release.yml@main
     with:
-      version: ${{ needs.resolve-version.outputs.release_version_stripped }}
-      artifact_name: gitsync-release-binaries
+      version: ${{ inputs.version || 'auto' }}
+      artifact_name: gitsync-release
       artifact_directory: artifacts
-      what-included: |
-        - Multi-platform binaries: Linux and Windows
-        - Cross-platform Git repository synchronization utility
-        - Multi-layer configuration system (global → org → repo)
-        - SSH known_hosts automatic management
-        - Template-based branch naming
-      quick-start: |
-        **Download the binary for your platform:**
-        - Linux: `gitsync`
-        - Windows: `gitsync.exe`
-
-        See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
+    permissions:
+      contents: write
+      actions: write
