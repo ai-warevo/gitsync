@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <format>
 #include <iostream>
 #include <memory>
@@ -238,12 +239,39 @@ void check_for_update(const ConfigSettings& config) {
     }
 
 #ifdef _WIN32
-    /* Windows: cannot replace running executable; ask user for manual intervention */
-    std::cout << std::format("\nUpdate downloaded to: {}\n", temp_file.string());
-    std::cout << "To complete the update, please:\n";
-    std::cout << "  1. Close all gitsync instances\n";
-    std::cout << std::format("  2. Replace: {} with {}\n", current_exe.string(), temp_file.string());
-    std::cout << "  3. Run: gitsync --version to verify\n";
+    /* Windows: Create a helper batch script to perform the update after process exits */
+    std::filesystem::path batch_file = temp_dir / "gitsync-update.bat";
+    std::string batch_content = std::format(
+        R"(@echo off
+setlocal
+:wait_loop
+tasklist /fi "imagename eq gitsync.exe" | find /i /n "gitsync.exe">nul
+if "%errorlevel%"=="0" (
+  timeout /t 1 /nobreak >nul
+  goto wait_loop
+)
+move /Y "{}" "{}"
+if "%errorlevel%"=="0" (
+  echo Updated to v{}
+) else (
+  echo Failed to move update file
+)
+)",
+        temp_file.string(), current_exe.string(), latest);
+
+    try {
+        std::ofstream batch_stream(batch_file);
+        batch_stream << batch_content;
+        batch_stream.close();
+
+        /* Execute the batch script in the background */
+        std::string exec_cmd = std::format(R"(start /B "{}")", batch_file.string());
+        std::system(exec_cmd.c_str());
+        std::cout << std::format("Preparing to update. Please wait...\n");
+    } catch (const std::exception& e) {
+        spdlog::warn("Failed to create update script: {}", e.what());
+        std::exit(1);
+    }
 #else
     /* Unix: atomically replace the running executable */
     try {

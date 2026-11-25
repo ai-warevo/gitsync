@@ -14,6 +14,73 @@ permissions:
   contents: write
   actions: write
 
+env:
+  WHAT_INCLUDED: |
+    - Multi-platform binaries: Linux and Windows
+    - Cross-platform Git repository synchronization utility
+    - Multi-layer configuration system (global → org → repo)
+    - SSH known_hosts automatic management
+    - Template-based branch naming
+  QUICK_START: |
+    **Download the binary for your platform:**
+    - Linux: `gitsync`
+    - Windows: `gitsync.exe`
+
+    **Configuration example:**
+
+    Create `~/.gitsync/config.json` (or `%USERPROFILE%\.gitsync\config.json` on Windows):
+
+    ```json
+    {
+      "LogLevel": "info",
+      "SourceRemoteName": "origin",
+      "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
+      "SshKeyTypes": "ed25519,rsa",
+      "MaxRetries": 3,
+      "UpdateCheckUrl": "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
+      "RemoteUrls": {
+        "backup": "git@github.com:username/backup.git"
+      },
+      "IncludeBranches": ["main", "develop"],
+      "ExcludeBranches": [],
+      "IncludeRemotes": ["origin", "backup"],
+      "ExcludeRemotes": []
+    }
+    ```
+
+    **Quick setup — Linux:**
+    ```bash
+    chmod +x gitsync
+    sudo mv gitsync /usr/local/bin/gitsync
+    mkdir -p ~/.gitsync
+    cp config.json ~/.gitsync/
+    gitsync
+    ```
+
+    **Quick setup — Windows (PowerShell):**
+    ```powershell
+    Move-Item .\gitsync.exe C:\Windows\gitsync.exe
+    New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.gitsync"
+    Copy-Item config.json "$env:USERPROFILE\.gitsync\"
+    gitsync
+    ```
+
+    **Configuration hierarchy:** gitsync merges configs from three levels — **global** (`~/.gitsync/config.json`), **organization** (`.gitsync/config.json` in parent dirs), and **repository** (`.gitsync/config.json` in the working dir). Later levels override earlier ones.
+
+    **Configuration options:**
+    - `LogLevel`: Logging level (info, debug, error)
+    - `SourceRemoteName`: Default remote to sync from
+    - `RemoteBranchTemplate`: Branch naming with `%owner%`, `%reponame%`, `%branchname%` placeholders
+    - `SshKeyTypes`: Comma-separated SSH key types (e.g., ed25519,rsa)
+    - `MaxRetries`: Maximum retry attempts for operations
+    - `RemoteUrls`: Map of remote names to Git URLs
+    - `IncludeBranches`: Branches to sync (empty = all)
+    - `ExcludeBranches`: Branches to skip
+    - `IncludeRemotes`: Remotes to sync (empty = all)
+    - `ExcludeRemotes`: Remotes to skip
+
+    See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
+
 jobs:
   # Phase 1: Resolve version only
   resolve-version:
@@ -180,19 +247,11 @@ jobs:
 
       - name: Generate Release Notes
         id: changelog
-        run: |
-          version="${{ needs.resolve-version.outputs.release_version_stripped }}"
-
-          # Extract release notes from local CHANGELOG.md
-          awk -v ver="$version" '
-            /^## \['"$version"'\]/ { found = 1; next }
-            found && /^## \[/ { exit }
-            found { print }
-          ' CHANGELOG.md > release_body.md
-
-          [ -s release_body.md ] || echo "No release notes found" > release_body.md
-          echo "body_path=release_body.md" >> $GITHUB_OUTPUT
-        shell: bash
+        uses: ai-warevo/.github/.github/actions/changelog-release@main
+        with:
+          tag: v${{ needs.resolve-version.outputs.release_version_stripped }}
+          what-included: ${{ env.WHAT_INCLUDED }}
+          quick-start: ${{ env.QUICK_START }}
 
       - name: Create Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
