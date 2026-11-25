@@ -212,6 +212,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Regenerate changelog to capture any new commits
+        uses: ai-warevo/.github/.github/actions/changelog-generate@main
+        with:
+          force: 'true'
+
       - name: Update VERSION file
         run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
         shell: bash
