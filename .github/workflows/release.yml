@@ -1,4 +1,4 @@
-# Release — build binaries on Linux + Windows, then publish via reusable workflow
+# Release — resolve version → build with VERSION → collect → commit/tag/publish via reusable workflow
 
 name: Release
 
@@ -16,8 +16,50 @@ permissions:
   actions: write
 
 jobs:
+  # Phase 1: Resolve version
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_version_stripped: ${{ steps.version.outputs.release_version_stripped }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog from git log
+        if: github.event_name == 'workflow_dispatch'
+        uses: ai-warevo/.github/.github/actions/changelog-generate@main
+        with:
+          force: 'true'
+        continue-on-error: true
+
+      - name: Ensure [Unreleased] exists
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
+            {
+              head -6 CHANGELOG.md
+              echo ""
+              echo "## [Unreleased]"
+              tail -n +7 CHANGELOG.md
+            } > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          fi
+        shell: bash
+
+      - name: Resolve version
+        id: version
+        uses: ai-warevo/.github/.github/actions/release-version@main
+        with:
+          version: ${{ inputs.version }}
+
+  # Phase 2: Build with resolved version
   build:
     name: Build ${{ matrix.os-label }} binary
+    needs: resolve-version
     runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
     strategy:
@@ -44,8 +86,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 0
+
+      - name: Update VERSION file
+        run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
+        shell: bash
 
       - name: Setup MSVC environment
         if: ${{ matrix.setup-env }}
@@ -79,6 +123,7 @@ jobs:
           path: ${{ matrix.artifact-path }}
           if-no-files-found: error
 
+  # Phase 3: Collect artifacts
   collect-artifacts:
     name: Collect release artifacts
     runs-on: ubuntu-latest
@@ -103,14 +148,14 @@ jobs:
           path: artifacts/
           if-no-files-found: error
 
+  # Phase 4: Commit, tag, and publish via reusable workflow
   release:
     name: Publish release
-    needs: [collect-artifacts]
-    uses: ai-warevo/.github/.github/workflows/reusable-release.yml@main
+    needs: [resolve-version, collect-artifacts]
+    uses: ai-warevo/.github/.github/workflows/reusable-release-with-build.yml@main
     with:
-      version: ${{ inputs.version || 'auto' }}
+      version: ${{ needs.resolve-version.outputs.release_version_stripped }}
       artifact_name: gitsync-release
       artifact_directory: artifacts
     permissions:
       contents: write
-      actions: write
