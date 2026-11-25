@@ -10,7 +10,7 @@
 
 A modern C++23 utility for synchronizing Git repositories across multiple remotes.
 
-## Features
+## Features 
 
 - **Multi-layer configuration**: Global → Organization → Repository config hierarchy
 - **SSH known_hosts management**: Automatic warm-up of target remote hosts
