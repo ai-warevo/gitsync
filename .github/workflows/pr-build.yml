@@ -26,4 +26,4 @@ jobs:
       build_type: Debug
       extra_args: -DGITSYNC_BUILD_TESTS=ON -DGITSYNC_WARNINGS_AS_ERRORS=ON
       extensions: cpp,hpp,c,h
-      container_image: ghcr.io/ai-warevo/cpp23:clang-18-libcxx
+      container_image: ghcr.io/ai-warevo/ci-cpp23:clang-18-libcxx

@@ -25,7 +25,7 @@ jobs:
     with:
       source_dir: .
       build_dir: build
-      container_image: ghcr.io/ai-warevo/cpp23:clang-18-libcxx
+      container_image: ghcr.io/ai-warevo/ci-cpp23:clang-18-libcxx
       cmake_sanitize_var: AW_SANITIZE
       cmake_extra_args: '-DGITSYNC_BUILD_TESTS=ON -DGITSYNC_WARNINGS_AS_ERRORS=ON'
       ctest_timeout: 300
@@ -39,7 +39,7 @@ jobs:
     with:
       source_dir: .
       build_dir: build
-      container_image: ghcr.io/ai-warevo/cpp23:gcc-15
+      container_image: ghcr.io/ai-warevo/ci-cpp23:gcc-15
       toolchain: gcc15
       cmake_extra_args: '-DGITSYNC_BUILD_TESTS=ON -DAW_ENABLE_COVERAGE=ON'
       gcovr_source_filter: ''
