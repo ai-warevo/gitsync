@@ -38,11 +38,16 @@ jobs:
         run: |
           if ! grep -qE '^### (Breaking|Added|Deprecated|Changed|Removed|Fixed|Security)' CHANGELOG.md; then
             # No entries, add placeholder
-            sed -i '/^## \[Unreleased\]/a\
-\
-### Changed\
-\
-- Maintenance release' CHANGELOG.md
+            {
+              head -8 CHANGELOG.md
+              echo ""
+              echo "### Changed"
+              echo ""
+              echo "- Maintenance release"
+              echo ""
+              tail -n +9 CHANGELOG.md
+            } > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
           fi
         shell: bash
 
