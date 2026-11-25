@@ -64,7 +64,7 @@ if(WIN32)
         VERSION_MINOR ${PROJECT_VERSION_MINOR}
         VERSION_PATCH ${PROJECT_VERSION_PATCH}
         COMPANY_NAME "AI-Warevo"
-        COMPANY_COPYRIGHT "Copyright 2024 AI-Warevo"
+        COMPANY_COPYRIGHT "Copyright 2026 AI-Warevo"
         FILE_DESCRIPTION "Git repository synchronization tool"
         COMMENTS "GitSync v${PROJECT_VERSION}"
         ORIGINAL_FILENAME "gitsync.exe"

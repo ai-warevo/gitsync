@@ -51,31 +51,37 @@ std::optional<std::vector<int>> parse_version_parts(std::string_view version) {
 std::string parse_latest_version(std::string_view json_response, std::string_view current_version) {
     /*
       Extract "tag_name" value from GitHub API release JSON response.
-      Returns current_version as fallback if parsing fails.
+      Falls back to plain-text content (trimmed) for raw VERSION files.
+      Falls back to current_version if neither works.
     */
     constexpr std::string_view tag_name_key = R"("tag_name")";
     auto pos = json_response.find(tag_name_key);
 
-    if (pos == std::string_view::npos) {
-        return std::string(current_version);
+    if (pos != std::string_view::npos) {
+        auto colon_pos = json_response.find(':', pos + tag_name_key.size());
+        if (colon_pos != std::string_view::npos) {
+            auto quote_pos = json_response.find('"', colon_pos);
+            if (quote_pos != std::string_view::npos) {
+                auto end = json_response.find('"', quote_pos + 1);
+                if (end != std::string_view::npos) {
+                    return std::string(json_response.substr(quote_pos + 1, end - quote_pos - 1));
+                }
+            }
+        }
     }
 
-    auto colon_pos = json_response.find(':', pos + tag_name_key.size());
-    if (colon_pos == std::string_view::npos) {
-        return std::string(current_version);
+    /* Plain-text fallback: trim whitespace, verify it looks like a version */
+    auto start = json_response.find_first_not_of(" \t\r\n");
+    auto end = json_response.find_last_not_of(" \t\r\n");
+    if (start != std::string_view::npos && end != std::string_view::npos) {
+        std::string trimmed = std::string(json_response.substr(start, end - start + 1));
+        /* Accept plain version strings like "2.0.20" or "v2.0.20" */
+        if (parse_version_parts(trimmed)) {
+            return trimmed;
+        }
     }
 
-    auto quote_pos = json_response.find('"', colon_pos);
-    if (quote_pos == std::string_view::npos) {
-        return std::string(current_version);
-    }
-
-    auto end = json_response.find('"', quote_pos + 1);
-    if (end == std::string_view::npos) {
-        return std::string(current_version);
-    }
-
-    return std::string(json_response.substr(quote_pos + 1, end - quote_pos - 1));
+    return std::string(current_version);
 }
 
 int compare_versions(std::string_view v1, std::string_view v2) {

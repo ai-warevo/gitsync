@@ -20,6 +20,20 @@ TEST_CASE("parse_latest_version returns current_version on failure", "[utils]") 
     REQUIRE(result == "1.0.0");
 }
 
+TEST_CASE("parse_latest_version handles plain-text VERSION file", "[utils]") {
+    const std::string text = "2.0.20\n";
+
+    auto result = parse_latest_version(text, "1.0.0");
+    REQUIRE(result == "2.0.20");
+}
+
+TEST_CASE("parse_latest_version handles plain-text with v prefix", "[utils]") {
+    const std::string text = "  v3.1.0  \n";
+
+    auto result = parse_latest_version(text, "1.0.0");
+    REQUIRE(result == "v3.1.0");
+}
+
 TEST_CASE("compare_versions handles equal versions", "[utils]") {
     REQUIRE(compare_versions("1.2.3", "1.2.3") == 0);
     REQUIRE(compare_versions("v1.2.3", "1.2.3") == 0);  // With/without 'v' prefix
