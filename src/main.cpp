@@ -97,71 +97,9 @@ void print_version() {
     std::cout << "gitsync v" << GITSYNC_VERSION << '\n';
 }
 
-/*
-  Extract download URL for a specific asset from GitHub release JSON.
-  Returns std::nullopt if the asset is not found.
-*/
-std::optional<std::string> find_asset_url(std::string_view json_response, std::string_view asset_name) {
-    spdlog::debug("find_asset_url: response size {} bytes", json_response.size());
-    
-    try {
-        auto json = nlohmann::json::parse(json_response);
-        
-        if (!json.contains("assets")) {
-            spdlog::warn("find_asset_url: 'assets' key not found in JSON");
-            return std::nullopt;
-        }
-        
-        if (!json["assets"].is_array()) {
-            spdlog::warn("find_asset_url: 'assets' is not an array, type: {}", json["assets"].type_name());
-            return std::nullopt;
-        }
-        
-        spdlog::debug("find_asset_url: assets array has {} items", json["assets"].size());
-        spdlog::debug("find_asset_url: searching for asset '{}'", asset_name);
-        
-        for (const auto& asset : json["assets"]) {
-            if (!asset.contains("name")) {
-                spdlog::debug("find_asset_url: asset missing 'name' field");
-                continue;
-            }
-            
-            if (!asset["name"].is_string()) {
-                spdlog::debug("find_asset_url: asset 'name' is not string");
-                continue;
-            }
-            
-            std::string name = asset["name"].get<std::string>();
-            spdlog::debug("find_asset_url: found asset '{}'", name);
-            
-            if (name == asset_name) {
-                spdlog::debug("find_asset_url: asset name matches, looking for browser_download_url");
-                
-                if (!asset.contains("browser_download_url")) {
-                    spdlog::warn("find_asset_url: asset '{}' found but 'browser_download_url' key missing", asset_name);
-                    return std::nullopt;
-                }
-                
-                if (!asset["browser_download_url"].is_string()) {
-                    spdlog::warn("find_asset_url: asset '{}' 'browser_download_url' is not string", asset_name);
-                    return std::nullopt;
-                }
-                
-                std::string url = asset["browser_download_url"].get<std::string>();
-                spdlog::info("find_asset_url: extracted download URL for '{}': {}", asset_name, url);
-                return url;
-            }
-        }
-        
-        spdlog::warn("find_asset_url: asset '{}' not found in assets array", asset_name);
-        return std::nullopt;
-    } catch (const std::exception& e) {
-        spdlog::warn("find_asset_url: JSON parse error: {}", e.what());
-        return std::nullopt;
-    }
-}
-
 void check_for_update(const ConfigSettings& config) {
+    init_logging(config.log_level);
+    
     std::cout << "gitsync v" << GITSYNC_VERSION << '\n';
     std::cout << "Checking for updates...\n";
 
@@ -189,6 +127,8 @@ void check_for_update(const ConfigSettings& config) {
     }
 
     int status = pclose(pipe);
+    spdlog::info("check_for_update: curl exit status = {}", status);
+    
     if (status != 0) {
         spdlog::warn("Failed to fetch release info from: {}", url);
         return;
@@ -198,12 +138,22 @@ void check_for_update(const ConfigSettings& config) {
         spdlog::warn("Empty response from update check");
         return;
     }
+    
+    spdlog::info("check_for_update: response length = {} bytes", response.size());
+    if (response.size() < 100) {
+        spdlog::info("check_for_update: response content: '{}'", response);
+    } else {
+        spdlog::info("check_for_update: response first 100 chars: {}", response.substr(0, 100));
+    }
 
     /* Parse latest version from GitHub API response or VERSION file */
     std::string latest_version = parse_latest_version(response, GITSYNC_VERSION);
+    spdlog::info("check_for_update: parsed latest_version = '{}'", latest_version);
 
     std::string_view current = GITSYNC_VERSION;
     std::string_view latest = latest_version;
+    spdlog::info("check_for_update: before strip - current='{}' latest='{}'", current, latest);
+    
     if (current.starts_with('v')) {
         current.remove_prefix(1);
     }
@@ -211,7 +161,10 @@ void check_for_update(const ConfigSettings& config) {
         latest.remove_prefix(1);
     }
 
+    spdlog::info("check_for_update: after strip - current='{}' latest='{}'", current, latest);
     int cmp = compare_versions(current, latest);
+    spdlog::info("check_for_update: compare_versions returned {} (>0=new, <0=old, 0=same)", cmp);
+    
     if (cmp >= 0) {
         std::cout << "Already up to date (v" << GITSYNC_VERSION << ")\n";
         return;

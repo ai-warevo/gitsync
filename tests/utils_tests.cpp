@@ -60,3 +60,99 @@ TEST_CASE("compare_versions handles malformed versions", "[utils]") {
     REQUIRE(compare_versions("abc", "1.2.3") == -2);  // Parse error
     REQUIRE(compare_versions("1.2.x", "1.2.3") == -2);  // Parse error
 }
+
+TEST_CASE("find_asset_url extracts download URL from GitHub release JSON", "[utils]") {
+    const std::string json = R"({
+        "assets": [
+            {
+                "name": "gitsync.exe",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync.exe"
+            }
+        ]
+    })";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(result.has_value());
+    REQUIRE(result.value() == "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync.exe");
+}
+
+TEST_CASE("find_asset_url returns nullopt when asset not found", "[utils]") {
+    const std::string json = R"({
+        "assets": [
+            {
+                "name": "gitsync",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync"
+            }
+        ]
+    })";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(!result.has_value());
+}
+
+TEST_CASE("find_asset_url returns nullopt when assets key missing", "[utils]") {
+    const std::string json = R"({
+        "tag_name": "v2.0.26"
+    })";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(!result.has_value());
+}
+
+TEST_CASE("find_asset_url returns nullopt when browser_download_url missing", "[utils]") {
+    const std::string json = R"({
+        "assets": [
+            {
+                "name": "gitsync.exe"
+            }
+        ]
+    })";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(!result.has_value());
+}
+
+TEST_CASE("find_asset_url handles multiple assets", "[utils]") {
+    const std::string json = R"({
+        "assets": [
+            {
+                "name": "gitsync",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync"
+            },
+            {
+                "name": "gitsync.exe",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync.exe"
+            },
+            {
+                "name": "SHA256SUMS.txt",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/SHA256SUMS.txt"
+            }
+        ]
+    })";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(result.has_value());
+    REQUIRE(result.value() == "https://github.com/ai-warevo/gitsync/releases/download/v2.0.26/gitsync.exe");
+}
+
+TEST_CASE("find_asset_url handles invalid JSON", "[utils]") {
+    const std::string json = R"({ broken json )";
+
+    auto result = find_asset_url(json, "gitsync.exe");
+    REQUIRE(!result.has_value());
+}
+
+TEST_CASE("find_asset_url extracts Linux binary", "[utils]") {
+    const std::string json = R"({
+        "assets": [
+            {
+                "name": "gitsync",
+                "browser_download_url": "https://github.com/ai-warevo/gitsync/releases/download/v2.0.28/gitsync"
+            }
+        ]
+    })";
+
+    auto result = find_asset_url(json, "gitsync");
+    REQUIRE(result.has_value());
+    REQUIRE(result.value() == "https://github.com/ai-warevo/gitsync/releases/download/v2.0.28/gitsync");
+}

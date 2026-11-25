@@ -7,6 +7,9 @@
 #include <string_view>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
+
 namespace aw::gitsync {
 
 namespace {
@@ -117,4 +120,65 @@ int compare_versions(std::string_view v1, std::string_view v2) {
     return 0;
 }
 
+std::optional<std::string> find_asset_url(std::string_view json_response, std::string_view asset_name) {
+    spdlog::debug("find_asset_url: response size {} bytes", json_response.size());
+    
+    try {
+        auto json = nlohmann::json::parse(json_response);
+        
+        if (!json.contains("assets")) {
+            spdlog::warn("find_asset_url: 'assets' key not found in JSON");
+            return std::nullopt;
+        }
+        
+        if (!json["assets"].is_array()) {
+            spdlog::warn("find_asset_url: 'assets' is not an array, type: {}", json["assets"].type_name());
+            return std::nullopt;
+        }
+        
+        spdlog::debug("find_asset_url: assets array has {} items", json["assets"].size());
+        spdlog::debug("find_asset_url: searching for asset '{}'", asset_name);
+        
+        for (const auto& asset : json["assets"]) {
+            if (!asset.contains("name")) {
+                spdlog::debug("find_asset_url: asset missing 'name' field");
+                continue;
+            }
+            
+            if (!asset["name"].is_string()) {
+                spdlog::debug("find_asset_url: asset 'name' is not string");
+                continue;
+            }
+            
+            std::string name = asset["name"].get<std::string>();
+            spdlog::debug("find_asset_url: found asset '{}'", name);
+            
+            if (name == asset_name) {
+                spdlog::debug("find_asset_url: asset name matches, looking for browser_download_url");
+                
+                if (!asset.contains("browser_download_url")) {
+                    spdlog::warn("find_asset_url: asset '{}' found but 'browser_download_url' key missing", asset_name);
+                    return std::nullopt;
+                }
+                
+                if (!asset["browser_download_url"].is_string()) {
+                    spdlog::warn("find_asset_url: asset '{}' 'browser_download_url' is not string", asset_name);
+                    return std::nullopt;
+                }
+                
+                std::string url = asset["browser_download_url"].get<std::string>();
+                spdlog::info("find_asset_url: extracted download URL for '{}': {}", asset_name, url);
+                return url;
+            }
+        }
+        
+        spdlog::warn("find_asset_url: asset '{}' not found in assets array", asset_name);
+        return std::nullopt;
+    } catch (const std::exception& e) {
+        spdlog::warn("find_asset_url: JSON parse error: {}", e.what());
+        return std::nullopt;
+    }
+}
+
 }  // namespace aw::gitsync
+
