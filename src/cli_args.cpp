@@ -28,6 +28,8 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
             result.version = true;
         } else if (arg == "--update" || arg == "-u") {
             result.update = true;
+        } else if (arg == "--cleanup") {
+            result.cleanup = true;
         } else if (arg == "--skip-host" || arg == "-s") {
             result.skip_host = true;
         } else if (arg.starts_with("--jobs=")) {

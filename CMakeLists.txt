@@ -48,6 +48,7 @@ aw_add_library(TARGET gitsync_core TYPE STATIC ALIAS aw::gitsync_core
         src/known_hosts_service.cpp
         src/git_sync_service.cpp
         src/utils.cpp
+        src/self_update.cpp
     PUBLIC_INCLUDE_DIRS include
     PUBLIC_LINKS
         nlohmann_json::nlohmann_json

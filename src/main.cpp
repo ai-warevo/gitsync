@@ -1,6 +1,5 @@
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
 #include <format>
 #include <iostream>
 #include <memory>
@@ -21,6 +20,7 @@
 #include "aw/gitsync/git_sync_service.hpp"
 #include "aw/gitsync/known_hosts_service.hpp"
 #include "aw/gitsync/process_runner.hpp"
+#include "aw/gitsync/self_update.hpp"
 #include "aw/gitsync/utils.hpp"
 
 // Platform-specific popen/pclose
@@ -149,7 +149,7 @@ void check_for_update(const ConfigSettings& config) {
     asset_name = "gitsync";
 #endif
 
-    /* Fetch VERSION file from configured URL (defaults to GitHub main branch) */
+    /* Fetch release info from configured URL (defaults to GitHub main branch) */
     const std::string& url = config.update_check_url;
     const std::string curl_cmd = std::format(R"(curl -s "{}")", url);
 
@@ -167,23 +167,17 @@ void check_for_update(const ConfigSettings& config) {
 
     int status = pclose(pipe);
     if (status != 0) {
-        spdlog::warn("Failed to fetch version from: {}", url);
+        spdlog::warn("Failed to fetch release info from: {}", url);
         return;
     }
 
     if (response.empty()) {
-        spdlog::warn("Empty response from version check");
+        spdlog::warn("Empty response from update check");
         return;
     }
 
-    /* Strip whitespace and 'v' prefix from response */
-    response.erase(0, response.find_first_not_of(" \t\n\r"));
-    response.erase(response.find_last_not_of(" \t\n\r") + 1);
-    if (!response.empty() && response[0] == 'v') {
-        response.erase(0, 1);
-    }
-
-    std::string latest_version = response;
+    /* Parse latest version from GitHub API response */
+    std::string latest_version = parse_latest_version(response, GITSYNC_VERSION);
 
     std::string_view current = GITSYNC_VERSION;
     std::string_view latest = latest_version;
@@ -202,91 +196,45 @@ void check_for_update(const ConfigSettings& config) {
 
     std::cout << std::format("New version available: v{} (current: v{})\n", latest, GITSYNC_VERSION);
 
-    /* Construct direct download URL for the asset */
-    std::string asset_url = std::format(
-        "https://github.com/ai-warevo/gitsync/releases/download/v{}/{}",
-        latest_version, asset_name);
-
-    std::cout << "Downloading update...\n";
-
-    std::filesystem::path current_exe;
-    try {
-#ifdef _WIN32
-        char exe_buffer[MAX_PATH];
-        GetModuleFileNameA(nullptr, exe_buffer, MAX_PATH);
-        current_exe = exe_buffer;
-#else
-        current_exe = std::filesystem::read_symlink("/proc/self/exe");
-#endif
-    } catch (const std::exception& e) {
-        spdlog::warn("Failed to get current executable path: {}", e.what());
+    /* Find download URL for the asset */
+    auto asset_url = find_asset_url(response, asset_name);
+    if (!asset_url) {
+        spdlog::warn("Failed to find download URL for asset: {}", asset_name);
         std::exit(1);
     }
 
-    /* Download to temporary location to avoid overwriting running executable */
-    std::filesystem::path temp_dir = std::filesystem::temp_directory_path();
+    std::cout << "Downloading update...\n";
+
+    /* Get current executable path */
+    auto [current_exe, err] = get_self_path();
+    if (err) {
+        spdlog::warn("Failed to get current executable path: {}", err->msg);
+        std::exit(1);
+    }
+
+    /* Download to parent directory for staged update */
+    std::filesystem::path parent_dir = current_exe.parent_path();
 #ifdef _WIN32
-    std::filesystem::path temp_file = temp_dir / "gitsync-update.exe";
+    std::filesystem::path update_file = parent_dir / "gitsync-update.exe";
 #else
-    std::filesystem::path temp_file = temp_dir / "gitsync-update";
+    std::filesystem::path update_file = parent_dir / "gitsync-update";
 #endif
 
-    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", temp_file.string(), asset_url);
+    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", update_file.string(), *asset_url);
     int download_status = std::system(download_cmd.c_str());
     if (download_status != 0) {
         spdlog::warn("Download failed (curl exit code: {})", download_status);
         std::exit(1);
     }
 
-#ifdef _WIN32
-    /* Windows: Create a helper batch script to perform the update after process exits */
-    std::filesystem::path batch_file = temp_dir / "gitsync-update.bat";
-    std::string batch_content = std::format(
-        R"(@echo off
-setlocal
-:wait_loop
-tasklist /fi "imagename eq gitsync.exe" | find /i /n "gitsync.exe">nul
-if "%errorlevel%"=="0" (
-  timeout /t 1 /nobreak >nul
-  goto wait_loop
-)
-move /Y "{}" "{}"
-if "%errorlevel%"=="0" (
-  echo Updated to v{}
-) else (
-  echo Failed to move update file
-)
-)",
-        temp_file.string(), current_exe.string(), latest);
-
-    try {
-        std::ofstream batch_stream(batch_file);
-        batch_stream << batch_content;
-        batch_stream.close();
-
-        /* Execute the batch script in the background */
-        std::string exec_cmd = std::format(R"(start /B "{}")", batch_file.string());
-        std::system(exec_cmd.c_str());
-        std::cout << std::format("Preparing to update. Please wait...\n");
-    } catch (const std::exception& e) {
-        spdlog::warn("Failed to create update script: {}", e.what());
+    /* Perform self-update (replace running binary, restart with --cleanup) */
+    auto [ok, update_err] = self_update(current_exe, "gitsync-update");
+    if (!ok) {
+        spdlog::error("Self-update failed: {}", update_err ? update_err->msg : "unknown error");
         std::exit(1);
     }
-#else
-    /* Unix: atomically replace the running executable */
-    try {
-        std::filesystem::permissions(temp_file, std::filesystem::perms::owner_exec |
-                                                  std::filesystem::perms::group_exec |
-                                                  std::filesystem::perms::others_exec,
-                                     std::filesystem::perm_options::add);
-        std::filesystem::rename(temp_file, current_exe);
-        std::cout << std::format("Updated to v{}\n", latest);
-    } catch (const std::exception& e) {
-        spdlog::warn("Failed to install update: {}", e.what());
-        std::cout << std::format("Update downloaded to: {} (manual install required)\n", temp_file.string());
-        std::exit(1);
-    }
-#endif
+
+    std::cout << std::format("Updated to v{}\n", latest);
 }
 
 void print_help() {
@@ -332,6 +280,13 @@ int main(int argc, char* argv[]) {
             auto config = ConfigReader::read_config();
             check_for_update(config);
             return 0;
+        }
+
+        if (cli_args.cleanup) {
+            auto [current_exe, err] = get_self_path();
+            if (!err) {
+                cleanup_old_binary(current_exe);
+            }
         }
 
         run_app(cli_args, cli_args.skip_host);
