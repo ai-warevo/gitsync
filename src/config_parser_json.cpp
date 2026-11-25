@@ -5,41 +5,18 @@
 
 #include <nlohmann/json.hpp>
 
+#include "aw/gitsync/config_parser_common.hpp"
+#include "aw/gitsync/config_schema.hpp"
+
 using json = nlohmann::json;
 
 namespace aw::gitsync {
 
 namespace {
 
-/*
-  Helpers that support both snake_case and PascalCase field names during deserialization.
-  snake_case takes precedence if both are present.
-*/
-
-std::optional<std::string> get_string(const json& j, const char* snake_name,
-                                      const char* pascal_name) {
-    if (j.contains(snake_name) && j[snake_name].is_string()) {
-        return j[snake_name].get<std::string>();
-    }
-    if (j.contains(pascal_name) && j[pascal_name].is_string()) {
-        return j[pascal_name].get<std::string>();
-    }
-    return std::nullopt;
-}
-
-std::optional<int> get_int(const json& j, const char* snake_name, const char* pascal_name) {
-    if (j.contains(snake_name) && j[snake_name].is_number_integer()) {
-        return j[snake_name].get<int>();
-    }
-    if (j.contains(pascal_name) && j[pascal_name].is_number_integer()) {
-        return j[pascal_name].get<int>();
-    }
-    return std::nullopt;
-}
-
 std::optional<std::map<std::string, std::string>> get_object(const json& j,
-                                                               const char* snake_name,
-                                                               const char* pascal_name) {
+                                                                const char* snake_name,
+                                                                const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_object()) {
         std::map<std::string, std::string> result;
         for (const auto& [key, val] : j[snake_name].items()) {
@@ -84,6 +61,16 @@ std::optional<std::vector<std::string>> get_array(const json& j, const char* sna
     return std::nullopt;
 }
 
+std::optional<int> get_int(const json& j, const char* snake_name, const char* pascal_name) {
+    if (j.contains(snake_name) && j[snake_name].is_number_integer()) {
+        return j[snake_name].get<int>();
+    }
+    if (j.contains(pascal_name) && j[pascal_name].is_number_integer()) {
+        return j[pascal_name].get<int>();
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& path) {
@@ -101,12 +88,27 @@ PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& 
     }
 
     PartialConfigSettings result;
-    result.log_level = get_string(j, "log_level", "LogLevel");
-    result.remote_branch_template = get_string(j, "remote_branch_template", "RemoteBranchTemplate");
-    result.source_remote_name = get_string(j, "source_remote_name", "SourceRemoteName");
-    result.ssh_key_types = get_string(j, "ssh_key_types", "SshKeyTypes");
-    result.update_check_url = get_string(j, "update_check_url", "UpdateCheckUrl");
-    result.release_download_url_template = get_string(j, "release_download_url_template", "ReleaseDownloadUrlTemplate");
+    
+    /* Parse simple string fields using schema */
+    for (const auto& field : CONFIG_SCHEMA) {
+        if (auto value = parse_config_string(j, field)) {
+            if (field.name == "log_level") {
+                result.log_level = *value;
+            } else if (field.name == "remote_branch_template") {
+                result.remote_branch_template = *value;
+            } else if (field.name == "source_remote_name") {
+                result.source_remote_name = *value;
+            } else if (field.name == "ssh_key_types") {
+                result.ssh_key_types = *value;
+            } else if (field.name == "update_check_url") {
+                result.update_check_url = *value;
+            } else if (field.name == "release_download_url_template") {
+                result.release_download_url_template = *value;
+            }
+        }
+    }
+    
+    /* Parse complex types (arrays, objects) manually */
     result.remote_urls = get_object(j, "remote_urls", "RemoteUrls");
     result.max_retries = get_int(j, "max_retries", "MaxRetries");
     result.include_branches = get_array(j, "include_branches", "IncludeBranches");

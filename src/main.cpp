@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -112,8 +113,13 @@ void check_for_update(const ConfigSettings& config) {
 
     /* Fetch release info from configured URL (defaults to GitHub main branch VERSION file) */
     const std::string& url = config.update_check_url;
-    spdlog::info("check_for_update: fetching from URL: {}", url);
-    const std::string curl_cmd = std::format(R"(curl -s "{}")", url);
+    
+    /* Add cache-busting query parameter with current timestamp */
+    auto now = std::chrono::system_clock::now().time_since_epoch().count();
+    std::string url_with_cache_bust = std::format("{}?t={}", url, now);
+    
+    spdlog::info("check_for_update: fetching from URL: {}", url_with_cache_bust);
+    const std::string curl_cmd = std::format(R"(curl -s -H "Cache-Control: no-cache" "{}")", url_with_cache_bust);
 
     FILE* pipe = popen(curl_cmd.c_str(), "r");
     if (!pipe) {
