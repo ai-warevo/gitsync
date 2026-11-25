@@ -116,26 +116,21 @@ std::optional<std::string> find_asset_url(std::string_view json_response, std::s
     }
 
     std::string_view after_name = assets_section.substr(name_pos);
-    auto end_brace = after_name.find("}}");
-    if (end_brace == std::string_view::npos) {
-        return std::nullopt;
-    }
-
-    std::string_view asset_obj = after_name.substr(0, end_brace + 2);
-
+    
+    /* Find browser_download_url within this asset object (stops at next asset or end of array) */
     constexpr std::string_view url_key = R"("browser_download_url":")";
-    auto url_pos = asset_obj.find(url_key);
+    auto url_pos = after_name.find(url_key);
     if (url_pos == std::string_view::npos) {
         return std::nullopt;
     }
 
     auto url_start = url_pos + url_key.size();
-    auto url_end = asset_obj.find('"', url_start);
+    auto url_end = after_name.find('"', url_start);
     if (url_end == std::string_view::npos) {
         return std::nullopt;
     }
 
-    return std::string(asset_obj.substr(url_start, url_end - url_start));
+    return std::string(after_name.substr(url_start, url_end - url_start));
 }
 
 void check_for_update(const ConfigSettings& config) {
