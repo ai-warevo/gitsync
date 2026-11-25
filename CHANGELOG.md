@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.20] - 2026-11-25
+
+## [2.0.19] - 2026-11-25
+
 ## [2.0.18] - 2026-11-25
 
 ## [2.0.17] - 2026-11-25
@@ -372,7 +376,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Template-based branch naming
 - CLI with version, help, update, and skip-host options
 
-[Unreleased]: https://github.com/ai-warevo/gitsync/compare/v2.0.18...HEAD
+[Unreleased]: https://github.com/ai-warevo/gitsync/compare/v2.0.20...HEAD
+[2.0.20]: https://github.com/ai-warevo/gitsync/compare/v2.0.19...v2.0.20
+[2.0.19]: https://github.com/ai-warevo/gitsync/compare/v2.0.18...v2.0.19
 [2.0.18]: https://github.com/ai-warevo/gitsync/compare/v2.0.17...v2.0.18
 [2.0.17]: https://github.com/ai-warevo/gitsync/compare/v2.0.16...v2.0.17
 [2.0.16]: https://github.com/ai-warevo/gitsync/compare/v2.0.15...v2.0.16
