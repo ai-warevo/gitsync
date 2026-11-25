@@ -222,19 +222,43 @@ void check_for_update(const ConfigSettings& config) {
         std::exit(1);
     }
 
-    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", current_exe.string(), asset_url);
+    /* Download to temporary location to avoid overwriting running executable */
+    std::filesystem::path temp_dir = std::filesystem::temp_directory_path();
+#ifdef _WIN32
+    std::filesystem::path temp_file = temp_dir / "gitsync-update.exe";
+#else
+    std::filesystem::path temp_file = temp_dir / "gitsync-update";
+#endif
+
+    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", temp_file.string(), asset_url);
     int download_status = std::system(download_cmd.c_str());
     if (download_status != 0) {
         spdlog::warn("Download failed (curl exit code: {})", download_status);
         std::exit(1);
     }
 
-#ifndef _WIN32
-    std::string chmod_cmd = std::format("chmod +x \"{}\"", current_exe.string());
-    std::system(chmod_cmd.c_str());
+#ifdef _WIN32
+    /* Windows: cannot replace running executable; ask user for manual intervention */
+    std::cout << std::format("\nUpdate downloaded to: {}\n", temp_file.string());
+    std::cout << "To complete the update, please:\n";
+    std::cout << "  1. Close all gitsync instances\n";
+    std::cout << std::format("  2. Replace: {} with {}\n", current_exe.string(), temp_file.string());
+    std::cout << "  3. Run: gitsync --version to verify\n";
+#else
+    /* Unix: atomically replace the running executable */
+    try {
+        std::filesystem::permissions(temp_file, std::filesystem::perms::owner_exec |
+                                                  std::filesystem::perms::group_exec |
+                                                  std::filesystem::perms::others_exec,
+                                     std::filesystem::perm_options::add);
+        std::filesystem::rename(temp_file, current_exe);
+        std::cout << std::format("Updated to v{}\n", latest);
+    } catch (const std::exception& e) {
+        spdlog::warn("Failed to install update: {}", e.what());
+        std::cout << std::format("Update downloaded to: {} (manual install required)\n", temp_file.string());
+        std::exit(1);
+    }
 #endif
-
-    std::cout << std::format("Updated to v{}\n", latest);
 }
 
 void print_help() {

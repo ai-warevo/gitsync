@@ -55,7 +55,7 @@ jobs:
         id: version
         uses: ai-warevo/.github/.github/actions/release-version@main
         with:
-          version: ''
+          version: auto
 
   # Phase 2: Build with resolved version
   build:
