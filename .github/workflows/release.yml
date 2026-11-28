@@ -47,6 +47,11 @@ jobs:
       build_cmd: make build
       test_cmd: make test
       version_file_path: VERSION
+      enable_code_signing: true
+      code_sign_presets: msvc-release
+    secrets:
+      code_sign_certificate_base64: ${{ secrets.SIGNING_CERTIFICATE }}
+      code_sign_certificate_password: ${{ secrets.CERTIFICATE_PASSWORD }}
 
   publish:
     needs: [resolve_version, resolve_from_catalog, build]
