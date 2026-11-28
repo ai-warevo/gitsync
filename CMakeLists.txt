@@ -86,15 +86,17 @@ target_compile_definitions(gitsync PRIVATE GITSYNC_VERSION="${PROJECT_VERSION}")
 
 install(TARGETS gitsync RUNTIME DESTINATION .)
 
-# Windows code signing (Windows only)
-# Certificate setup: see template_cpp/tools/create_cert.ps1
-if(WIN32)
+# Windows code signing (Release only)
+# Certificate is imported into Windows cert store by CI before build.
+# To enable locally: import cert.pfx to Cert:\CurrentUser\My, then build Release.
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
     include(Windows/CodeSign)
     aw_code_sign_target(
         TARGET gitsync
         CERT_NAME "AI-Warevo Code Signing"
     )
 endif()
+
 
 if(GITSYNC_WARNINGS_AS_ERRORS)
     aw_configure_compiler(TARGET gitsync STRICT_WARNINGS)
