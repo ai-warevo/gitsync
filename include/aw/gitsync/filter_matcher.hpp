@@ -13,16 +13,16 @@ public:
     /// Check if name matches any include pattern
     /// If include_patterns is empty, matches everything
     static bool matches_include(const std::string& name,
-                               const std::vector<std::string>& include_patterns);
+                                const std::vector<std::string>& include_patterns);
 
     /// Check if name should be excluded
     static bool matches_exclude(const std::string& name,
-                               const std::vector<std::string>& exclude_patterns);
+                                const std::vector<std::string>& exclude_patterns);
 
     /// Check if name passes both include and exclude filters
     static bool passes_filters(const std::string& name,
-                              const std::vector<std::string>& include_patterns,
-                              const std::vector<std::string>& exclude_patterns);
+                               const std::vector<std::string>& include_patterns,
+                               const std::vector<std::string>& exclude_patterns);
 
 private:
     /// Simple glob pattern matching (* and ? support)

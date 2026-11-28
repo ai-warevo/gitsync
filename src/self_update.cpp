@@ -42,12 +42,14 @@ std::pair<fs::path, std::optional<UpdateError>> get_self_path() {
     }
     std::error_code ec;
     auto path = fs::canonical(buffer, ec);
-    if (ec) return {fs::path(), UpdateError{ec.message()}};
+    if (ec)
+        return {fs::path(), UpdateError{ec.message()}};
     return {path, std::nullopt};
 #else
     std::error_code ec;
     auto path = fs::read_symlink("/proc/self/exe", ec);
-    if (ec) return {fs::path(), UpdateError{ec.message()}};
+    if (ec)
+        return {fs::path(), UpdateError{ec.message()}};
     return {path, std::nullopt};
 #endif
 }
@@ -76,9 +78,8 @@ void cleanup_old_binary(const fs::path& current_exe) {
     }
 }
 
-std::pair<bool, std::optional<UpdateError>> self_update(
-    const fs::path& current_exe,
-    std::string_view update_filename) {
+std::pair<bool, std::optional<UpdateError>> self_update(const fs::path& current_exe,
+                                                        std::string_view update_filename) {
     fs::path update_bin = current_exe.parent_path() / update_filename;
     fs::path old_exe = current_exe;
     old_exe += ".old";
@@ -100,15 +101,15 @@ std::pair<bool, std::optional<UpdateError>> self_update(
     /* 3. Copy new file in place of old */
     fs::copy_file(update_bin, current_exe, fs::copy_options::overwrite_existing, ec);
     if (ec) {
-        fs::rename(old_exe, current_exe, ec);  /* rollback */
+        fs::rename(old_exe, current_exe, ec); /* rollback */
         return {false, UpdateError{std::format("Failed to copy update: {}", ec.message())}};
     }
 
 #ifndef _WIN32
     /* 4. Set execute permissions for Unix */
     fs::permissions(current_exe,
-        fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
-        fs::perm_options::add, ec);
+                    fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+                    fs::perm_options::add, ec);
 #endif
 
     /* 5. Restart with cleanup flag */
@@ -117,7 +118,8 @@ std::pair<bool, std::optional<UpdateError>> self_update(
     PROCESS_INFORMATION pi{};
     std::wstring cmd = L"\"" + current_exe.wstring() + L"\" --cleanup";
 
-    if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+    if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si,
+                        &pi)) {
         return {false, UpdateError{std::format("CreateProcessW error: {}", GetLastError())}};
     }
     CloseHandle(pi.hProcess);
@@ -133,4 +135,4 @@ std::pair<bool, std::optional<UpdateError>> self_update(
 #endif
 }
 
-}  // namespace aw::gitsync
+} // namespace aw::gitsync

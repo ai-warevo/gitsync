@@ -9,7 +9,8 @@ namespace aw::gitsync {
 CliArgs parse_cli_args(const std::vector<std::string>& args) {
     CliArgs result;
     int max_jobs = static_cast<int>(std::thread::hardware_concurrency());
-    if (max_jobs <= 0) max_jobs = 32;  /* Fallback if detection fails */
+    if (max_jobs <= 0)
+        max_jobs = 32; /* Fallback if detection fails */
 
     for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
@@ -38,10 +39,12 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
             try {
                 result.jobs = std::stoi(std::string(value));
                 if (result.jobs < 1 || result.jobs > max_jobs) {
-                    throw std::runtime_error("Jobs must be between 1 and " + std::to_string(max_jobs));
+                    throw std::runtime_error("Jobs must be between 1 and " +
+                                             std::to_string(max_jobs));
                 }
             } catch (const std::exception&) {
-                throw std::runtime_error(std::string("Invalid --jobs value: ") + std::string(value));
+                throw std::runtime_error(std::string("Invalid --jobs value: ") +
+                                         std::string(value));
             }
         } else if (arg == "--jobs" || arg == "-j") {
             /* -j N form: next argument is the value */
@@ -52,7 +55,8 @@ CliArgs parse_cli_args(const std::vector<std::string>& args) {
             try {
                 result.jobs = std::stoi(args[i]);
                 if (result.jobs < 1 || result.jobs > max_jobs) {
-                    throw std::runtime_error("Jobs must be between 1 and " + std::to_string(max_jobs));
+                    throw std::runtime_error("Jobs must be between 1 and " +
+                                             std::to_string(max_jobs));
                 }
             } catch (const std::exception&) {
                 throw std::runtime_error(std::string("Invalid --jobs value: ") + args[i]);

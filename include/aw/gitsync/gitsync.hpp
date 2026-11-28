@@ -9,6 +9,6 @@ namespace aw::gitsync {
 /// Returns a greeting for `who`.
 [[nodiscard]] std::string greet(std::string_view who);
 
-}  // namespace aw::gitsync
+} // namespace aw::gitsync
 
 #endif // AW_GITSYNC_GITSYNC_HPP

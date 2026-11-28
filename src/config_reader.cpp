@@ -52,13 +52,14 @@ ConfigSettings ConfigReader::read_config() {
     return final_partial.into_final_settings();
 }
 
-PartialConfigSettings ConfigReader::read_config_from_path(const std::filesystem::path& config_path) {
+PartialConfigSettings
+ConfigReader::read_config_from_path(const std::filesystem::path& config_path) {
     /*
       Dispatch based on file extension: .yaml/.yml → YAML, else → JSON.
       Allows users to mix format (e.g., global JSON + repo YAML).
     */
     auto ext = config_path.extension();
-    
+
     if (ext == ".yaml" || ext == ".yml") {
         return ConfigParserYaml::parse_file(config_path);
     }
@@ -89,10 +90,10 @@ std::vector<std::filesystem::path> ConfigReader::collect_config_paths() {
     return resolve_config_hierarchy(env_path, home_dir, current_dir);
 }
 
-std::vector<std::filesystem::path> ConfigReader::resolve_config_hierarchy(
-    const std::optional<std::string>& config_env,
-    const std::optional<std::filesystem::path>& home_dir,
-    const std::optional<std::filesystem::path>& current_dir) {
+std::vector<std::filesystem::path>
+ConfigReader::resolve_config_hierarchy(const std::optional<std::string>& config_env,
+                                       const std::optional<std::filesystem::path>& home_dir,
+                                       const std::optional<std::filesystem::path>& current_dir) {
     std::vector<std::filesystem::path> paths;
 
     /*

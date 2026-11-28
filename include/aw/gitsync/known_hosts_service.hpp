@@ -1,21 +1,20 @@
 #ifndef AW_GITSYNC_KNOWN_HOSTS_SERVICE_HPP
 #define AW_GITSYNC_KNOWN_HOSTS_SERVICE_HPP
 
-#include "aw/gitsync/config_settings.hpp"
-#include "aw/gitsync/process_runner.hpp"
-
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "aw/gitsync/config_settings.hpp"
+#include "aw/gitsync/process_runner.hpp"
 
 namespace aw::gitsync {
 
 /// Service for warming up SSH known_hosts by scanning remote hosts
 class KnownHostsService {
 public:
-    KnownHostsService(std::shared_ptr<IProcessRunner> process_runner,
-                      const ConfigSettings& config);
+    KnownHostsService(std::shared_ptr<IProcessRunner> process_runner, const ConfigSettings& config);
 
     /// Warm up known_hosts at the default location (~/.ssh/known_hosts)
     void warm_up();

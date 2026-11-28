@@ -119,6 +119,39 @@ Checks:
   # Ranges: std::find with iterators is idiomatic; ranges require C++20 and add complexity
   - '-modernize-use-ranges'
   - '-boost-use-ranges'
+  # --- gitsync-specific exclusions ---
+  # Implicit bool conversion: std::isspace/isalnum return int; pointer-to-bool common idiom
+  - '-readability-implicit-bool-conversion'
+  # Recursion: glob_match is intentionally recursive (backtracking pattern matching)
+  - '-misc-no-recursion'
+  # Else after return: existing control flow style
+  - '-llvm-else-after-return'
+  - '-readability-else-after-return'
+  # anyof/allof: explicit loop is clearer for filter matching
+  - '-readability-use-anyofallof'
+  # Pass by value + move: shared_ptr and config passed by const ref intentionally
+  - '-modernize-pass-by-value'
+  # Static helper to anonymous namespace: format_timestamp/format_duration
+  - '-misc-use-anonymous-namespace'
+  # C arrays in self_update (execv requires char*[], no std::array alternative)
+  - '-cppcoreguidelines-avoid-c-arrays'
+  - '-hicpp-avoid-c-arrays'
+  - '-modernize-avoid-c-arrays'
+  - '-cppcoreguidelines-pro-bounds-array-to-pointer-decay'
+  - '-hicpp-no-array-decay'
+  # Deprecated C headers: limits.h used inside platform #ifdef block
+  - '-hicpp-deprecated-headers'
+  - '-modernize-deprecated-headers'
+  # Using namespace in main.cpp: single translation unit, not a header
+  - '-google-build-using-namespace'
+  # auto for cast result: uint32_t is explicit and documents the type
+  - '-modernize-use-auto'
+  - '-hicpp-use-auto'
+  # starts_with: already used where available; existing idiom kept for clarity
+  - '-modernize-use-starts-ends-with'
+  # emplace_back: push_back with string literal is equivalent
+  - '-hicpp-use-emplace'
+  - '-modernize-use-emplace'
 
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^(include|src)/'

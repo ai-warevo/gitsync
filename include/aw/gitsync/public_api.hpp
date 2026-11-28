@@ -6,7 +6,7 @@
 /// Stable APIs (guaranteed through v1.x):
 ///   - ConfigSettings (data container)
 ///   - PartialConfigSettings (data container for merging)
-///   - ConfigReader::read_config() 
+///   - ConfigReader::read_config()
 ///   - ConfigReader::read_config_from_path()
 ///   - ConfigReader::collect_config_paths()
 ///   - GitSyncService::sanitize_branch_name()
@@ -32,8 +32,8 @@
 #ifndef AW_GITSYNC_PUBLIC_API_HPP
 #define AW_GITSYNC_PUBLIC_API_HPP
 
-#include "aw/gitsync/config_settings.hpp"
 #include "aw/gitsync/config_reader.hpp"
+#include "aw/gitsync/config_settings.hpp"
 #include "aw/gitsync/git_sync_service.hpp"
 
 namespace aw::gitsync {

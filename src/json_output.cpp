@@ -20,7 +20,7 @@ json JsonOutput::to_json() const {
         json remote_obj;
         remote_obj["remote"] = remote.remote_name;
         remote_obj["success"] = remote.success;
-        
+
         json branches_array = json::array();
         for (const auto& branch : remote.branches_pushed) {
             branches_array.push_back(branch);
@@ -32,7 +32,7 @@ json JsonOutput::to_json() const {
             errors_array.push_back(error);
         }
         remote_obj["errors"] = errors_array;
-        
+
         remotes_array.push_back(remote_obj);
     }
     j["synced_remotes"] = remotes_array;
@@ -59,12 +59,12 @@ static std::string format_timestamp() {
     auto time_t = std::chrono::system_clock::to_time_t(now);
     std::ostringstream oss;
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
+#    pragma warning(push)
+#    pragma warning(disable : 4996)
 #endif
     oss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%SZ");
 #ifdef _MSC_VER
-#pragma warning(pop)
+#    pragma warning(pop)
 #endif
     return oss.str();
 }
@@ -75,9 +75,8 @@ static std::string format_duration(double secs) {
     return oss.str();
 }
 
-JsonOutput JsonOutput::make_success(bool dry_run,
-                                  const std::vector<SyncRemoteResult>& results,
-                                  double duration_secs) {
+JsonOutput JsonOutput::make_success(bool dry_run, const std::vector<SyncRemoteResult>& results,
+                                    double duration_secs) {
     JsonOutput output;
     output.status = "success";
     output.exit_code = 0;
@@ -88,9 +87,8 @@ JsonOutput JsonOutput::make_success(bool dry_run,
     return output;
 }
 
-JsonOutput JsonOutput::make_partial(bool dry_run,
-                                  const std::vector<SyncRemoteResult>& results,
-                                  double duration_secs) {
+JsonOutput JsonOutput::make_partial(bool dry_run, const std::vector<SyncRemoteResult>& results,
+                                    double duration_secs) {
     JsonOutput output;
     output.status = "partial";
     output.exit_code = 2;

@@ -13,8 +13,8 @@ struct UpdateError {
 
 /*
   Get the path to the currently running executable.
-  Cross-platform: Windows (GetModuleFileNameW), macOS (_NSGetExecutablePath), Linux (/proc/self/exe).
-  Returns: (path, optional error).
+  Cross-platform: Windows (GetModuleFileNameW), macOS (_NSGetExecutablePath), Linux
+  (/proc/self/exe). Returns: (path, optional error).
 */
 std::pair<std::filesystem::path, std::optional<UpdateError>> get_self_path();
 
@@ -24,9 +24,8 @@ std::pair<std::filesystem::path, std::optional<UpdateError>> get_self_path();
   Rolls back if copy fails.
   Returns: (success, optional error).
 */
-std::pair<bool, std::optional<UpdateError>> self_update(
-    const std::filesystem::path& current_exe,
-    std::string_view update_filename);
+std::pair<bool, std::optional<UpdateError>> self_update(const std::filesystem::path& current_exe,
+                                                        std::string_view update_filename);
 
 /*
   Clean up old binary (.old file) after restart.
@@ -34,6 +33,6 @@ std::pair<bool, std::optional<UpdateError>> self_update(
 */
 void cleanup_old_binary(const std::filesystem::path& current_exe);
 
-}  // namespace aw::gitsync
+} // namespace aw::gitsync
 
-#endif  // AW_GITSYNC_SELF_UPDATE_HPP
+#endif // AW_GITSYNC_SELF_UPDATE_HPP

@@ -130,9 +130,8 @@ std::optional<int> get_int(const nlohmann::json& obj, const char* snake_name,
     return std::nullopt;
 }
 
-std::optional<std::map<std::string, std::string>> get_object(const nlohmann::json& obj,
-                                                              const char* snake_name,
-                                                              const char* pascal_name) {
+std::optional<std::map<std::string, std::string>>
+get_object(const nlohmann::json& obj, const char* snake_name, const char* pascal_name) {
     const nlohmann::json* target = nullptr;
     if (obj.contains(snake_name) && obj[snake_name].is_object()) {
         target = &obj[snake_name];
@@ -152,9 +151,8 @@ std::optional<std::map<std::string, std::string>> get_object(const nlohmann::jso
     return std::nullopt;
 }
 
-std::optional<std::vector<std::string>> get_array(const nlohmann::json& obj,
-                                                   const char* snake_name,
-                                                   const char* pascal_name) {
+std::optional<std::vector<std::string>> get_array(const nlohmann::json& obj, const char* snake_name,
+                                                  const char* pascal_name) {
     const nlohmann::json* target = nullptr;
     if (obj.contains(snake_name) && obj[snake_name].is_array()) {
         target = &obj[snake_name];
@@ -179,8 +177,7 @@ std::optional<std::vector<std::string>> get_array(const nlohmann::json& obj,
 PartialConfigSettings ConfigParserYaml::parse_file(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error(std::string("Failed to read YAML config file: ") +
-                                 path.string());
+        throw std::runtime_error(std::string("Failed to read YAML config file: ") + path.string());
     }
 
     nlohmann::json node;
@@ -192,11 +189,13 @@ PartialConfigSettings ConfigParserYaml::parse_file(const std::filesystem::path& 
 
     PartialConfigSettings result;
     result.log_level = get_string(node, "log_level", "LogLevel");
-    result.remote_branch_template = get_string(node, "remote_branch_template", "RemoteBranchTemplate");
+    result.remote_branch_template =
+        get_string(node, "remote_branch_template", "RemoteBranchTemplate");
     result.source_remote_name = get_string(node, "source_remote_name", "SourceRemoteName");
     result.ssh_key_types = get_string(node, "ssh_key_types", "SshKeyTypes");
     result.update_check_url = get_string(node, "update_check_url", "UpdateCheckUrl");
-    result.release_download_url_template = get_string(node, "release_download_url_template", "ReleaseDownloadUrlTemplate");
+    result.release_download_url_template =
+        get_string(node, "release_download_url_template", "ReleaseDownloadUrlTemplate");
     result.remote_urls = get_object(node, "remote_urls", "RemoteUrls");
     result.max_retries = get_int(node, "max_retries", "MaxRetries");
     result.include_branches = get_array(node, "include_branches", "IncludeBranches");
@@ -208,4 +207,3 @@ PartialConfigSettings ConfigParserYaml::parse_file(const std::filesystem::path& 
 }
 
 } // namespace aw::gitsync
-

@@ -1,13 +1,12 @@
 #include "aw/gitsync/config_parser_common.hpp"
-#include "aw/gitsync/config_schema.hpp"
 
 #include <string>
 
+#include "aw/gitsync/config_schema.hpp"
+
 namespace aw::gitsync {
 
-std::optional<std::string> parse_config_string(
-    const nlohmann::json& j,
-    const ConfigField& field) {
+std::optional<std::string> parse_config_string(const nlohmann::json& j, const ConfigField& field) {
     /* Try PascalCase key first */
     std::string json_key{field.json_key};
     if (j.contains(json_key)) {

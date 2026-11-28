@@ -28,7 +28,8 @@ std::optional<std::vector<int>> parse_version_parts(std::string_view version) {
 
     while (!remaining.empty()) {
         auto dot_pos = remaining.find('.');
-        std::string_view part = (dot_pos == std::string_view::npos) ? remaining : remaining.substr(0, dot_pos);
+        std::string_view part =
+            (dot_pos == std::string_view::npos) ? remaining : remaining.substr(0, dot_pos);
 
         int value = 0;
         auto [ptr, ec] = std::from_chars(part.data(), part.data() + part.size(), value);
@@ -49,7 +50,7 @@ std::optional<std::vector<int>> parse_version_parts(std::string_view version) {
     return parts;
 }
 
-}  // namespace
+} // namespace
 
 std::string parse_latest_version(std::string_view json_response, std::string_view current_version) {
     /*
@@ -128,5 +129,4 @@ std::string get_update_file_name() {
 #endif
 }
 
-}  // namespace aw::gitsync
-
+} // namespace aw::gitsync

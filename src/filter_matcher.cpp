@@ -39,7 +39,7 @@ bool FilterMatcher::glob_match(std::string_view pattern, std::string_view name) 
 }
 
 bool FilterMatcher::matches_include(const std::string& name,
-                                   const std::vector<std::string>& include_patterns) {
+                                    const std::vector<std::string>& include_patterns) {
     if (include_patterns.empty()) {
         /* Empty include list includes everything (no filtering) */
         return true;
@@ -54,7 +54,7 @@ bool FilterMatcher::matches_include(const std::string& name,
 }
 
 bool FilterMatcher::matches_exclude(const std::string& name,
-                                   const std::vector<std::string>& exclude_patterns) {
+                                    const std::vector<std::string>& exclude_patterns) {
     for (const auto& pattern : exclude_patterns) {
         if (glob_match(pattern, name)) {
             return true;
@@ -64,8 +64,8 @@ bool FilterMatcher::matches_exclude(const std::string& name,
 }
 
 bool FilterMatcher::passes_filters(const std::string& name,
-                                  const std::vector<std::string>& include_patterns,
-                                  const std::vector<std::string>& exclude_patterns) {
+                                   const std::vector<std::string>& include_patterns,
+                                   const std::vector<std::string>& exclude_patterns) {
     return matches_include(name, include_patterns) && !matches_exclude(name, exclude_patterns);
 }
 

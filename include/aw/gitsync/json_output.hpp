@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+
 #include <nlohmann/json.hpp>
 
 namespace aw::gitsync {
@@ -20,12 +21,12 @@ struct SyncRemoteResult {
 
 /// Complete sync output in JSON format
 struct JsonOutput {
-    std::string status;  // "success", "partial", "error"
+    std::string status; // "success", "partial", "error"
     int exit_code = 0;
     bool dry_run = false;
     std::string timestamp;
-    std::string duration;  // "1.23s"
-    
+    std::string duration; // "1.23s"
+
     std::vector<SyncRemoteResult> synced_remotes;
     std::vector<std::string> warnings;
     std::vector<std::string> errors;
@@ -34,14 +35,12 @@ struct JsonOutput {
     json to_json() const;
 
     /// Create from components
-    static JsonOutput make_success(bool dry_run,
-                                  const std::vector<SyncRemoteResult>& results,
-                                  double duration_secs);
-    
-    static JsonOutput make_partial(bool dry_run,
-                                  const std::vector<SyncRemoteResult>& results,
-                                  double duration_secs);
-    
+    static JsonOutput make_success(bool dry_run, const std::vector<SyncRemoteResult>& results,
+                                   double duration_secs);
+
+    static JsonOutput make_partial(bool dry_run, const std::vector<SyncRemoteResult>& results,
+                                   double duration_secs);
+
     static JsonOutput make_error(const std::string& error_msg, double duration_secs);
 };
 

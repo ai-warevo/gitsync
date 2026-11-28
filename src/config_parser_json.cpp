@@ -14,9 +14,8 @@ namespace aw::gitsync {
 
 namespace {
 
-std::optional<std::map<std::string, std::string>> get_object(const json& j,
-                                                                const char* snake_name,
-                                                                const char* pascal_name) {
+std::optional<std::map<std::string, std::string>> get_object(const json& j, const char* snake_name,
+                                                             const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_object()) {
         std::map<std::string, std::string> result;
         for (const auto& [key, val] : j[snake_name].items()) {
@@ -39,7 +38,7 @@ std::optional<std::map<std::string, std::string>> get_object(const json& j,
 }
 
 std::optional<std::vector<std::string>> get_array(const json& j, const char* snake_name,
-                                                   const char* pascal_name) {
+                                                  const char* pascal_name) {
     if (j.contains(snake_name) && j[snake_name].is_array()) {
         std::vector<std::string> result;
         for (const auto& val : j[snake_name]) {
@@ -76,8 +75,7 @@ std::optional<int> get_int(const json& j, const char* snake_name, const char* pa
 PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error(std::string("Failed to read JSON config file: ") +
-                                 path.string());
+        throw std::runtime_error(std::string("Failed to read JSON config file: ") + path.string());
     }
 
     json j;
@@ -88,7 +86,7 @@ PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& 
     }
 
     PartialConfigSettings result;
-    
+
     /* Parse simple string fields using schema */
     for (const auto& field : CONFIG_SCHEMA) {
         if (auto value = parse_config_string(j, field)) {
@@ -107,7 +105,7 @@ PartialConfigSettings ConfigParserJson::parse_file(const std::filesystem::path& 
             }
         }
     }
-    
+
     /* Parse complex types (arrays, objects) manually */
     result.remote_urls = get_object(j, "remote_urls", "RemoteUrls");
     result.max_retries = get_int(j, "max_retries", "MaxRetries");

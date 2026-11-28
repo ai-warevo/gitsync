@@ -17,8 +17,8 @@ struct CliArgs {
     bool version = false;
     bool update = false;
     bool skip_host = false;
-    bool cleanup = false;  /* Internal: cleanup after self-update */
-    int jobs = 1;  // Default: sequential (1 job)
+    bool cleanup = false; /* Internal: cleanup after self-update */
+    int jobs = 1;         // Default: sequential (1 job)
 
     /// Override log level if CLI flags set
     std::optional<std::string> log_level_override() const {

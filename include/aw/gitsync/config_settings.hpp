@@ -47,7 +47,8 @@ struct PartialConfigSettings {
         Defaults: LogLevel="info", SourceRemoteName="origin",
         RemoteBranchTemplate="%owner%/%reponame%/%branchname%", RemoteUrls={}, SshKeyTypes="",
         UpdateCheckUrl="https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
-        ReleaseDownloadUrlTemplate="https://github.com/ai-warevo/gitsync/releases/download/v{version}/{filename}" */
+        ReleaseDownloadUrlTemplate="https://github.com/ai-warevo/gitsync/releases/download/v{version}/{filename}"
+     */
     [[nodiscard]] ConfigSettings into_final_settings() const;
 };
 

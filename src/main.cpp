@@ -27,13 +27,13 @@
 
 // Platform-specific popen/pclose
 #ifdef _WIN32
-    #define popen _popen
-    #define pclose _pclose
+#    define popen _popen
+#    define pclose _pclose
 #endif
 
 // Version is provided at compile time via CMake
 #ifndef GITSYNC_VERSION
-    #define GITSYNC_VERSION "0.0.0"
+#    define GITSYNC_VERSION "0.0.0"
 #endif
 
 using namespace aw::gitsync;
@@ -58,11 +58,11 @@ void init_logging(const std::string& log_level) {
 
 void run_app(const CliArgs& cli_args, bool skip_host) {
     auto config = ConfigReader::read_config();
-    
+
     if (auto override = cli_args.log_level_override()) {
         config.log_level = *override;
     }
-    
+
     init_logging(config.log_level);
 
     auto process_runner = std::make_shared<ProcessRunner>();
@@ -100,7 +100,7 @@ void print_version() {
 
 void check_for_update(const ConfigSettings& config) {
     init_logging(config.log_level);
-    
+
     std::cout << "gitsync v" << GITSYNC_VERSION << '\n';
     std::cout << "Checking for updates...\n";
 
@@ -113,13 +113,14 @@ void check_for_update(const ConfigSettings& config) {
 
     /* Fetch release info from configured URL (defaults to GitHub main branch VERSION file) */
     const std::string& url = config.update_check_url;
-    
+
     /* Add cache-busting query parameter with current timestamp */
     auto now = std::chrono::system_clock::now().time_since_epoch().count();
     std::string url_with_cache_bust = std::format("{}?t={}", url, now);
-    
+
     spdlog::info("check_for_update: fetching from URL: {}", url_with_cache_bust);
-    const std::string curl_cmd = std::format(R"(curl -s -H "Cache-Control: no-cache" "{}")", url_with_cache_bust);
+    const std::string curl_cmd =
+        std::format(R"(curl -s -H "Cache-Control: no-cache" "{}")", url_with_cache_bust);
 
     FILE* pipe = popen(curl_cmd.c_str(), "r");
     if (!pipe) {
@@ -135,7 +136,7 @@ void check_for_update(const ConfigSettings& config) {
 
     int status = pclose(pipe);
     spdlog::info("check_for_update: curl exit status = {}", status);
-    
+
     if (status != 0) {
         spdlog::warn("Failed to fetch release info from: {}", url);
         return;
@@ -145,7 +146,7 @@ void check_for_update(const ConfigSettings& config) {
         spdlog::warn("Empty response from update check");
         return;
     }
-    
+
     spdlog::info("check_for_update: response length = {} bytes", response.size());
     if (response.size() < 100) {
         spdlog::info("check_for_update: response content: '{}'", response);
@@ -160,7 +161,7 @@ void check_for_update(const ConfigSettings& config) {
     std::string_view current = GITSYNC_VERSION;
     std::string_view latest = latest_version;
     spdlog::info("check_for_update: before strip - current='{}' latest='{}'", current, latest);
-    
+
     if (current.starts_with('v')) {
         current.remove_prefix(1);
     }
@@ -171,17 +172,18 @@ void check_for_update(const ConfigSettings& config) {
     spdlog::info("check_for_update: after strip - current='{}' latest='{}'", current, latest);
     int cmp = compare_versions(current, latest);
     spdlog::info("check_for_update: compare_versions returned {} (>0=new, <0=old, 0=same)", cmp);
-    
+
     if (cmp >= 0) {
         std::cout << "Already up to date (v" << GITSYNC_VERSION << ")\n";
         return;
     }
 
-    std::cout << std::format("New version available: v{} (current: v{})\n", latest, GITSYNC_VERSION);
+    std::cout << std::format("New version available: v{} (current: v{})\n", latest,
+                             GITSYNC_VERSION);
 
     /* Construct download URL from config template */
     std::string asset_url = config.release_download_url_template;
-    
+
     /* Replace {version} and {filename} placeholders */
     size_t pos = 0;
     while ((pos = asset_url.find("{version}", pos)) != std::string::npos) {
@@ -193,7 +195,7 @@ void check_for_update(const ConfigSettings& config) {
         asset_url.replace(pos, 10, asset_name);
         pos += asset_name.length();
     }
-    
+
     spdlog::info("check_for_update: download URL: {}", asset_url);
 
     std::cout << "Downloading update...\n";
@@ -212,7 +214,8 @@ void check_for_update(const ConfigSettings& config) {
     std::filesystem::path parent_dir = current_exe.parent_path();
     std::filesystem::path update_file = parent_dir / update_file_name;
 
-    std::string download_cmd = std::format(R"(curl -L -o "{}" "{}")", update_file.string(), asset_url);
+    std::string download_cmd =
+        std::format(R"(curl -L -o "{}" "{}")", update_file.string(), asset_url);
     int download_status = std::system(download_cmd.c_str());
     if (download_status != 0) {
         spdlog::warn("Download failed (curl exit code: {})", download_status);
@@ -271,7 +274,7 @@ int main(int argc, char* argv[]) {
         if (cli_args.update) {
             auto config = ConfigReader::read_config();
             check_for_update(config);
-            return 0;  /* Exit after update check/self-update */
+            return 0; /* Exit after update check/self-update */
         }
 
         if (cli_args.cleanup) {
@@ -279,7 +282,7 @@ int main(int argc, char* argv[]) {
             if (!err) {
                 cleanup_old_binary(current_exe);
             }
-            return 0;  /* Exit after cleanup */
+            return 0; /* Exit after cleanup */
         }
 
         run_app(cli_args, cli_args.skip_host);

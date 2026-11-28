@@ -1,22 +1,21 @@
 #ifndef AW_GITSYNC_GIT_SYNC_SERVICE_HPP
 #define AW_GITSYNC_GIT_SYNC_SERVICE_HPP
 
-#include "aw/gitsync/config_settings.hpp"
-#include "aw/gitsync/process_runner.hpp"
-
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include "aw/gitsync/config_settings.hpp"
+#include "aw/gitsync/process_runner.hpp"
+
 namespace aw::gitsync {
 
 /// Service for syncing git repositories to multiple remote mirrors
 class GitSyncService {
 public:
-    GitSyncService(std::shared_ptr<IProcessRunner> process_runner,
-                   const ConfigSettings& config);
+    GitSyncService(std::shared_ptr<IProcessRunner> process_runner, const ConfigSettings& config);
 
     /// Main sync loop: ensures remotes, builds refspec, and pushes to all remotes
     void run();

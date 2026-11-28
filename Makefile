@@ -60,10 +60,16 @@ lint:
 	@if ! command -v $(CLANG_FORMAT) >/dev/null 2>&1 || ! command -v $(CLANG_TIDY) >/dev/null 2>&1; then \
 		echo "SKIP: lint tools not found"; \
 		exit 0; \
+	fi; \
+	if [ ! -f "build/$(LINT_PRESET)/compile_commands.json" ]; then \
+		cmake --preset $(LINT_PRESET); \
+	fi; \
+	if [ -n "$(CPP_FILES)" ]; then \
+		$(CLANG_FORMAT) --dry-run --Werror $(CPP_FILES); \
+	fi; \
+	if [ -n "$(CPP_SOURCE_FILES)" ]; then \
+		$(CLANG_TIDY) -p build/$(LINT_PRESET) $(CLANG_TIDY_WARNINGS_AS_ERRORS) $(CPP_SOURCE_FILES); \
 	fi
-	@if [ ! -f "build/$(LINT_PRESET)/compile_commands.json" ]; then cmake --preset $(LINT_PRESET); fi
-	@if [ -n "$(CPP_FILES)" ]; then $(CLANG_FORMAT) --dry-run --Werror $(CPP_FILES); fi
-	@if [ -n "$(CPP_SOURCE_FILES)" ]; then $(CLANG_TIDY) -p build/$(LINT_PRESET) $(CLANG_TIDY_WARNINGS_AS_ERRORS) $(CPP_SOURCE_FILES); fi
 
 asan:
 	$(MAKE) build PRESET=$(ASAN_PRESET)
