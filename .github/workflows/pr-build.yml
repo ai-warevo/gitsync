@@ -1,11 +1,4 @@
-# PR Build — fast lint + compile checks on every pull request
-#
-# Triggers: pull_request and merge_group to main/master
-# Calls: reusable-pr-fast.yml from ai-warevo/.github
-#
-# This workflow runs fast formatting and static analysis checks plus a Debug build,
-# keeping PR feedback time to <5 minutes.
-
+# Pull request CI — lint, build, and test using the shared C++23 matrix.
 name: PR Build
 
 on:
@@ -17,13 +10,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  fast-checks:
-    uses: ai-warevo/.github/.github/workflows/reusable-pr-fast.yml@main
+  build:
+    uses: ai-warevo/.github/.github/workflows/reusable__common__build_cpp23.yml@main
     with:
-      source_dir: .
-      build_dir: build
-      build_type: Debug
-      extra_args: -DGITSYNC_BUILD_TESTS=ON -DGITSYNC_WARNINGS_AS_ERRORS=ON
-      extensions: cpp,hpp,c,h
-      container_image: ghcr.io/ai-warevo/ci-cpp23:clang-18-libcxx
+      upload_artifacts: false
+      lint_cmd: make lint
+      build_cmd: make build
+      test_cmd: make test

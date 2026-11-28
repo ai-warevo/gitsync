@@ -1,270 +1,67 @@
-# Release — resolve version → build with VERSION → collect → commit/tag/publish
-
+# Release — shared version resolution, C++23 build matrix, and publication.
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version override (X.Y.Z); leave empty for auto'
+        description: 'Version override (X.Y.Z); leave empty for automatic resolution'
         required: false
         type: string
 
 permissions:
   contents: write
-  actions: write
-
-env:
-  WHAT_INCLUDED: |
-    - Multi-platform binaries: Linux and Windows
-    - Cross-platform Git repository synchronization utility
-    - Multi-layer configuration system (global → org → repo)
-    - SSH known_hosts automatic management
-    - Template-based branch naming
-  QUICK_START: |
-    **Download the binary for your platform:**
-    - Linux: `gitsync`
-    - Windows: `gitsync.exe`
-
-    **Configuration example:**
-
-    Create `~/.gitsync/config.json` (or `%USERPROFILE%\.gitsync\config.json` on Windows):
-
-    ```json
-    {
-      "LogLevel": "info",
-      "SourceRemoteName": "origin",
-      "RemoteBranchTemplate": "%owner%/%reponame%/%branchname%",
-      "SshKeyTypes": "ed25519,rsa",
-      "MaxRetries": 3,
-      "UpdateCheckUrl": "https://raw.githubusercontent.com/ai-warevo/gitsync/refs/heads/main/VERSION",
-      "ReleaseDownloadUrlTemplate": "https://github.com/ai-warevo/gitsync/releases/download/v{version}/{filename}",
-      "RemoteUrls": {
-        "backup": "git@github.com:username/backup.git"
-      },
-      "IncludeBranches": ["main", "develop"],
-      "ExcludeBranches": [],
-      "IncludeRemotes": ["origin", "backup"],
-      "ExcludeRemotes": []
-    }
-    ```
-
-    **Quick setup — Linux:**
-    ```bash
-    chmod +x gitsync
-    sudo mv gitsync /usr/local/bin/gitsync
-    mkdir -p ~/.gitsync
-    cp config.json ~/.gitsync/
-    gitsync
-    ```
-
-    **Quick setup — Windows (PowerShell):**
-    ```powershell
-    Move-Item .\gitsync.exe C:\Windows\gitsync.exe
-    New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.gitsync"
-    Copy-Item config.json "$env:USERPROFILE\.gitsync\"
-    gitsync
-    ```
-
-    **Configuration hierarchy:** gitsync merges configs from three levels — **global** (`~/.gitsync/config.json`), **organization** (`.gitsync/config.json` in parent dirs), and **repository** (`.gitsync/config.json` in the working dir). Later levels override earlier ones.
-
-    **Configuration options:**
-    - `LogLevel`: Logging level (info, debug, error)
-    - `SourceRemoteName`: Default remote to sync from
-    - `RemoteBranchTemplate`: Branch naming with `%owner%`, `%reponame%`, `%branchname%` placeholders
-    - `SshKeyTypes`: Comma-separated SSH key types (e.g., ed25519,rsa)
-    - `MaxRetries`: Maximum retry attempts for operations
-    - `RemoteUrls`: Map of remote names to Git URLs
-    - `IncludeBranches`: Branches to sync (empty = all)
-    - `ExcludeBranches`: Branches to skip
-    - `IncludeRemotes`: Remotes to sync (empty = all)
-    - `ExcludeRemotes`: Remotes to skip
-
-    See [README.md](https://github.com/ai-warevo/gitsync#readme) for full documentation.
+  actions: read
 
 jobs:
-  # Phase 1: Resolve version only
-  resolve-version:
-    name: Resolve version
+  resolve_version:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
     runs-on: ubuntu-latest
     outputs:
-      release_version: ${{ steps.version.outputs.release_version }}
-      release_version_stripped: ${{ steps.version.outputs.release_version_stripped }}
+      version: ${{ steps.version.outputs.version }}
+      release_notes: ${{ steps.version.outputs.release_notes }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 0
+      - id: version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+          printf 'release_notes=Manual release of gitsync %s\n' "$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Generate changelog from git log
-        uses: ai-warevo/.github/.github/actions/changelog-generate@main
-        with:
-          force: 'true'
-        continue-on-error: true
+  resolve_from_catalog:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.version != '') }}
+    uses: ai-warevo/.github/.github/workflows/reusable__release__resolve_version.yml@main
+    with:
+      version_source: version_file
+      version_file_path: VERSION
 
-      - name: Resolve version
-        id: version
-        uses: ai-warevo/.github/.github/actions/release-version@main
-        with:
-          version: auto
-
-  # Phase 2: Build with resolved version
   build:
-    name: Build ${{ matrix.os-label }} binary
-    needs: resolve-version
-    runs-on: ${{ matrix.runs-on }}
-    container: ${{ matrix.container }}
-    strategy:
-      matrix:
-        include:
-          - os-label: Linux
-            runs-on: ubuntu-latest
-            container: ghcr.io/ai-warevo/ci-cpp23:gcc-15
-            build-dir: build/release
-            artifact-path: build/release/gitsync
-            artifact-name: gitsync-linux
-            post-build: strip build/release/gitsync
-            setup-env: false
-            sign: false
-          - os-label: Windows
-            runs-on: windows-latest
-            container: null
-            build-dir: build/msvc
-            artifact-path: build/msvc/Release/gitsync.exe
-            artifact-name: gitsync-windows
-            post-build: ''
-            setup-env: true
-            sign: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+    needs: [resolve_version, resolve_from_catalog]
+    if: ${{ always() && (needs.resolve_version.result == 'success' || needs.resolve_from_catalog.result == 'success') }}
+    uses: ai-warevo/.github/.github/workflows/reusable__common__build_cpp23.yml@main
+    with:
+      upload_artifacts: true
+      artifacts_base_path: dist
+      new_version_number: ${{ needs.resolve_version.outputs.version || needs.resolve_from_catalog.outputs.version }}
+      lint_cmd: make lint
+      build_cmd: make build
+      test_cmd: make test
+      version_file_path: VERSION
 
-      - name: Update VERSION file
-        run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
-        shell: bash
+  publish:
+    needs: [resolve_version, resolve_from_catalog, build]
+    if: ${{ always() && needs.build.result == 'success' && (needs.resolve_version.result == 'success' || needs.resolve_from_catalog.result == 'success') }}
+    uses: ai-warevo/.github/.github/workflows/reusable__release__publish.yml@main
+    with:
+      version: ${{ needs.resolve_version.outputs.version || needs.resolve_from_catalog.outputs.version }}
+      release_notes: ${{ needs.resolve_version.outputs.release_notes || needs.resolve_from_catalog.outputs.release_notes }}
+      release_notes_footer: |
+        ### 📦 What's Included
+        - Linux and Windows gitsync binaries
+        - Cross-platform Git repository synchronization
+        - Multi-layer configuration and SSH known_hosts management
+        - Template-based branch naming
 
-      - name: Setup MSVC environment
-        if: ${{ matrix.setup-env }}
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Import code signing certificate
-        if: ${{ matrix.sign }}
-        uses: ai-warevo/.github/.github/actions/windows-code-sign@main
-        with:
-          certificate_secret: ${{ secrets.SIGNING_CERTIFICATE }}
-          certificate_password: ${{ secrets.CERTIFICATE_PASSWORD }}
-
-      - name: Configure & Build
-        uses: ai-warevo/.github/.github/actions/cmake-build@main
-        with:
-          source_dir: .
-          build_dir: ${{ matrix.build-dir }}
-          build_type: Release
-          config: ${{ matrix.os-label == 'Windows' && 'Release' || '' }}
-          extra_args: -DGITSYNC_BUILD_TESTS=OFF -DGITSYNC_WARNINGS_AS_ERRORS=ON
-
-      - name: Post-build (strip binary)
-        if: ${{ matrix.post-build != '' }}
-        run: ${{ matrix.post-build }}
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
-          if-no-files-found: error
-
-  # Phase 3: Collect artifacts
-  collect-artifacts:
-    name: Collect release artifacts
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Download Linux artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: gitsync-linux
-          path: artifacts
-
-      - name: Download Windows artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: gitsync-windows
-          path: artifacts
-
-      - name: Upload final artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: gitsync-release
-          path: artifacts/
-          if-no-files-found: error
-
-  # Phase 4: Commit, tag, and publish
-  release:
-    name: Publish release
-    needs: [resolve-version, collect-artifacts]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 0
-
-      - name: Regenerate changelog to capture any new commits
-        uses: ai-warevo/.github/.github/actions/changelog-generate@main
-        with:
-          force: 'true'
-
-      - name: Update VERSION file
-        run: echo "${{ needs.resolve-version.outputs.release_version_stripped }}" > VERSION
-        shell: bash
-
-      - name: Promote CHANGELOG
-        uses: ai-warevo/.github/.github/actions/changelog-promote@main
-        with:
-          version: ${{ needs.resolve-version.outputs.release_version_stripped }}
-
-      - name: Commit and tag
-        uses: ai-warevo/.github/.github/actions/release-commit-tag@main
-        with:
-          version: ${{ needs.resolve-version.outputs.release_version }}
-          branch: ${{ github.ref_name }}
-
-      - name: Download release artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: gitsync-release
-          path: artifacts
-
-      - name: Generate checksums
-        uses: ai-warevo/.github/.github/actions/checksums@main
-        with:
-          artifacts_dir: artifacts
-          checksums_file: SHA256SUMS.txt
-
-      - name: Verify checksums
-        uses: ai-warevo/.github/.github/actions/checksums-verify@main
-        with:
-          artifacts_dir: artifacts
-          checksums_file: SHA256SUMS.txt
-
-      - name: Generate Release Notes
-        id: changelog
-        uses: ai-warevo/.github/.github/actions/changelog-release@main
-        with:
-          tag: v${{ needs.resolve-version.outputs.release_version_stripped }}
-          what-included: ${{ env.WHAT_INCLUDED }}
-          quick-start: ${{ env.QUICK_START }}
-
-      - name: Create Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
-        with:
-          tag_name: v${{ needs.resolve-version.outputs.release_version_stripped }}
-          name: v${{ needs.resolve-version.outputs.release_version_stripped }}
-          body_path: ${{ steps.changelog.outputs.body_path }}
-          files: |
-            artifacts/**
-          generate_release_notes: false
+        ### 🚀 Quick Start
+        Download the binary for your platform and create `~/.gitsync/config.json`.
+        See the [gitsync README](https://github.com/ai-warevo/gitsync#readme) for configuration options.

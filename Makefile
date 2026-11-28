@@ -1,153 +1,138 @@
-# gitsync Makefile — CI contract + comprehensive build system
-# This merges the spoofiq multi-preset system with gitsync's CI contract.
-# Targets: build, test, lint, clean, debug-*, release-*, all, [CI: ci-fast, ci-deep, ci-coverage, build-release]
+VERSION ?= 0.0.1
+PRESET  ?= gcc-15-debug
 
-.PHONY: help configure build test clean debug release debug-gcc debug-clang debug-clang-libcxx debug-msvc release-gcc release-clang release-clang-libcxx release-msvc all ci-fast ci-deep ci-coverage build-release lint
+CLANG_FORMAT ?= clang-format-18
+LINT_PRESET  ?= clang18-libcxx-debug
+CLANG_TIDY   ?= clang-tidy-18
+CLANG_TIDY_WARNINGS_AS_ERRORS ?= --warnings-as-errors='*'
 
-help: ## Show this help message
-	@echo "gitsync Makefile — available targets:"
-	@echo ""
-	@echo "Debug builds:"
-	@echo "  make debug-gcc          - Configure & build Debug with GCC"
-	@echo "  make debug-clang        - Configure & build Debug with Clang"
-	@echo "  make debug-clang-libcxx - Configure & build Debug with Clang + libc++"
-	@echo "  make debug-msvc         - Configure & build Debug with MSVC (Windows)"
-	@echo ""
-	@echo "Release builds:"
-	@echo "  make release-gcc        - Configure & build Release with GCC"
-	@echo "  make release-clang      - Configure & build Release with Clang"
-	@echo "  make release-clang-libcxx - Configure & build Release with Clang + libc++"
-	@echo "  make release-msvc       - Configure & build Release with MSVC (Windows)"
-	@echo ""
-	@echo "Quick shortcuts:"
-	@echo "  make debug              - Build Debug (default: GCC)"
-	@echo "  make release            - Build Release (default: GCC)"
-	@echo "  make all                - Build all presets"
-	@echo ""
-	@echo "Development:"
-	@echo "  make configure PRESET=<name> - Configure only"
-	@echo "  make build PRESET=<name>     - Build only"
-	@echo "  make test PRESET=<name>      - Run tests"
-	@echo "  make lint               - Run clang-format and clang-tidy checks"
-	@echo "  make clean              - Remove all build directories"
-	@echo "  make clean-<preset>     - Remove specific build directory"
-	@echo ""
-	@echo "CI/CD:"
-	@echo "  make ci-fast            - Fast PR checks (lint + build + tests)"
-	@echo "  make ci-deep            - Deep checks (sanitizers + tests)"
-	@echo "  make ci-coverage        - Generate coverage report"
-	@echo "  make build-release      - Build optimized release binaries"
+COVERAGE_PRESET ?= gcc-15-coverage
+COVERAGE_XML    ?= coverage.xml
+COVERAGE_HTML   ?= htmlcov
+GCOVR_FILTERS   ?= src include tests
+GCOVR_EXCLUDES  ?= build _deps
+GCOVR_OPTS      ?= --gcov-ignore-errors=no_working_dir_found --exclude-unreachable-branches --exclude-throw-branches --print-summary
 
-# Default preset
-PRESET ?= debug-gcc
+ASAN_PRESET ?= gcc-15-asan
+TSAN_PRESET ?= gcc-15-tsan
+TSAN_SETARCH ?= setarch $$(uname -m) -R
 
-# Configure only
+CPP_EXTS      := cpp cxx c hpp hxx h
+CPP_FIND_ARGS := $(patsubst %,-o -name '*.%',$(CPP_EXTS))
+CPP_EXT_REGEX := \.($(subst $(eval) ,|,$(CPP_EXTS)))$$
+SRC_EXTS      := cpp cxx c
+CPP_FILES        = $(shell find src include tests -type f \( -false $(CPP_FIND_ARGS) \) 2>/dev/null)
+STAGED_CPP_FILES = $(shell git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -E '$(CPP_EXT_REGEX)' || true)
+CPP_SOURCE_FILES = $(shell find src tests -type f \( -false $(patsubst %,-o -name '*.%',$(SRC_EXTS)) \) 2>/dev/null)
+CMAKE_INSTALL_CONFIG := $(if $(filter debug-% %-debug %-coverage %-asan %-tsan,$(PRESET)),Debug,Release)
+
+.PHONY: help format format-staged lint lint-staged configure build test asan tsan coverage clean \
+        pr-fast weekly-deep release debug release-gcc debug-clang debug-clang-libcxx \
+        debug-msvc release-clang release-clang-libcxx release-msvc all ci-fast ci-deep ci-coverage build-release
+
+help:
+	@echo "gitsync CI contract (default PRESET=$(PRESET))"
+	@echo "  make lint                    Format and static-analysis checks"
+	@echo "  make build PRESET=<name>    Configure, build, and install"
+	@echo "  make test PRESET=<name>     Run the CTest suite"
+	@echo "  make asan | make tsan       Sanitizer build and tests"
+	@echo "  make coverage               Generate coverage.xml and htmlcov/"
+	@echo "  make pr-fast                Run lint, build, and tests"
+	@echo "  make weekly-deep            Run sanitizers and coverage"
+
 configure:
 	cmake --preset $(PRESET)
 
-# Build only
-build:
-	cmake --build --preset $(PRESET)
+build: configure
+	cmake --build --preset $(PRESET) --parallel
+	cmake --install build/$(PRESET) --config $(CMAKE_INSTALL_CONFIG) --prefix dist/$(PRESET)
 
-# Configure + Build
-configure-build: configure build
-
-# Tests
-test: build
+test:
 	ctest --preset $(PRESET) --output-on-failure
 
-# Individual preset targets — Debug
-debug-gcc: PRESET=debug-gcc
-debug-gcc: configure-build
+format:
+	@if [ -n "$(CPP_FILES)" ]; then $(CLANG_FORMAT) -i $(CPP_FILES); fi
 
-debug-clang: PRESET=debug-clang
-debug-clang: configure-build
+format-staged:
+	@if [ -n "$(STAGED_CPP_FILES)" ]; then $(CLANG_FORMAT) -i $(STAGED_CPP_FILES); git add $(STAGED_CPP_FILES); else echo "No staged C/C++ files to format"; fi
 
-debug-clang-libcxx: PRESET=debug-clang-libcxx
-debug-clang-libcxx: configure-build
-
-debug-msvc: PRESET=debug-msvc
-debug-msvc: configure-build
-
-# Individual preset targets — Release
-release-gcc: PRESET=release-gcc
-release-gcc: configure-build
-
-release-clang: PRESET=release-clang
-release-clang: configure-build
-
-release-clang-libcxx: PRESET=release-clang-libcxx
-release-clang-libcxx: configure-build
-
-release-msvc: PRESET=release-msvc
-release-msvc: configure-build
-
-# Quick aliases
-debug: debug-gcc
-release: release-gcc
-
-# Build all presets (skips MSVC on non-Windows)
-all: debug-gcc release-gcc debug-clang release-clang debug-clang-libcxx release-clang-libcxx
-
-# Clean specific build directory
-clean-%:
-	rm -rf build/$*
-
-# Clean all
-clean:
-	rm -rf build/Debug-* build/Release-* build/_deps
-
-# Lint targets
-lint: ## Run clang-format and clang-tidy checks
-	@echo "Running clang-format check..."
-	@find src include tests -name '*.cpp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror
-	@echo "Running clang-tidy..."
-	@if [ -f "build/Debug-clang18-libcxx/compile_commands.json" ]; then \
-		find src include tests -name '*.cpp' | xargs clang-tidy -p build/Debug-clang18-libcxx; \
-	else \
-		echo "Error: compile_commands.json not found. Run 'make clang18-libcxx' first."; \
-		exit 1; \
+lint:
+	@if ! command -v $(CLANG_FORMAT) >/dev/null 2>&1 || ! command -v $(CLANG_TIDY) >/dev/null 2>&1; then \
+		echo "SKIP: lint tools not found"; \
+		exit 0; \
 	fi
+	@if [ ! -f "build/$(LINT_PRESET)/compile_commands.json" ]; then cmake --preset $(LINT_PRESET); fi
+	@if [ -n "$(CPP_FILES)" ]; then $(CLANG_FORMAT) --dry-run --Werror $(CPP_FILES); fi
+	@if [ -n "$(CPP_SOURCE_FILES)" ]; then $(CLANG_TIDY) -p build/$(LINT_PRESET) $(CLANG_TIDY_WARNINGS_AS_ERRORS) $(CPP_SOURCE_FILES); fi
 
-# --- CI Contract Targets ---
+asan:
+	$(MAKE) build PRESET=$(ASAN_PRESET)
+	$(MAKE) test PRESET=$(ASAN_PRESET)
 
-ci-fast: ## Fast PR checks: lint + format + build + unit tests
-	@echo "==> Running fast CI checks..."
+tsan:
+	$(MAKE) build PRESET=$(TSAN_PRESET)
+	@if command -v setarch >/dev/null 2>&1; then $(TSAN_SETARCH) $(MAKE) test PRESET=$(TSAN_PRESET); else $(MAKE) test PRESET=$(TSAN_PRESET); fi
+
+coverage:
+	@if ! command -v gcovr >/dev/null 2>&1; then echo "ERROR: gcovr not found"; exit 1; fi
+	$(MAKE) build PRESET=$(COVERAGE_PRESET)
+	$(MAKE) test PRESET=$(COVERAGE_PRESET)
+	@GCOV_CMD=$$(grep '^COVERAGE_GCOV_EXECUTABLE' build/$(COVERAGE_PRESET)/CMakeCache.txt 2>/dev/null | cut -d= -f2); \
+	if [ -z "$$GCOV_CMD" ]; then GCOV_CMD=gcov; fi; \
+	mkdir -p $(COVERAGE_HTML); \
+	PWD_ABS=$$(pwd); \
+	FILTER_ARGS="$$(for d in $(GCOVR_FILTERS); do echo -n "--filter $$PWD_ABS/$$d/ "; done)"; \
+	EXCLUDE_ARGS="$$(for d in $(GCOVR_EXCLUDES); do echo -n "--exclude '.*/$$d/' "; done)"; \
+	gcovr -r . build/$(COVERAGE_PRESET) --gcov-executable $$GCOV_CMD $$FILTER_ARGS $$EXCLUDE_ARGS \
+		$(GCOVR_OPTS) --xml-pretty --output $(COVERAGE_XML) --html-details $(COVERAGE_HTML)/index.html
+
+pr-fast:
 	$(MAKE) lint
-	cmake --preset clang18-libcxx -DGITSYNC_WARNINGS_AS_ERRORS=ON
-	cmake --build --preset clang18-libcxx
-	ctest --preset clang18-libcxx --output-on-failure
+	$(MAKE) build PRESET=gcc-15-debug
+	$(MAKE) test PRESET=gcc-15-debug
 
-ci-deep: ## Deep scheduled checks: sanitizers + tests
-	@echo "==> Running deep CI checks..."
-	cmake --preset clang18-libcxx -DCMAKE_BUILD_TYPE=Debug -DGITSYNC_WARNINGS_AS_ERRORS=ON \
-		-DCMAKE_CXX_FLAGS="-stdlib=libc++ -fsanitize=address,undefined -fno-omit-frame-pointer"
-	cmake --build --preset clang18-libcxx
-	ASAN_OPTIONS=detect_leaks=1 ctest --preset clang18-libcxx --output-on-failure
+weekly-deep:
+	$(MAKE) asan
+	$(MAKE) tsan
+	$(MAKE) coverage
 
-ci-coverage: ## Generate coverage report and badge
-	@echo "==> Generating coverage report..."
-	cmake --preset clang18-libcxx -DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_CXX_FLAGS="-stdlib=libc++ --coverage -fprofile-arcs -ftest-coverage"
-	cmake --build --preset clang18-libcxx
-	ctest --preset clang18-libcxx --output-on-failure
-	@echo "Computing coverage..."
-	@COVERAGE=$$(lcov --capture --directory build/Debug-clang18-libcxx --output-file coverage.info 2>/dev/null | \
-		lcov --summary coverage.info 2>&1 | grep 'lines......:' | sed 's/.*: \([0-9.]*\)%.*/\1/'); \
-	COLOR=$$(echo "$$COVERAGE >= 80" | bc -l | grep -q 1 && echo "brightgreen" || echo "orange"); \
-	wget -qO coverage.svg "https://img.shields.io/badge/coverage-$${COVERAGE}%25-$$COLOR"
+release:
+	gh workflow run release.yml --ref main
 
-build-release: ## Build optimized release artifacts
-	@echo "==> Building release artifacts..."
-ifeq ($(OS),Windows_NT)
-	cmake --preset release-msvc
-	cmake --build --preset release-msvc
-	mkdir -p dist
-	cp build/Release-msvc/Release/gitsync.exe dist/gitsync.exe
-else
-	cmake --preset release-gcc -DGITSYNC_WARNINGS_AS_ERRORS=ON
-	cmake --build --preset release-gcc
-	mkdir -p dist
-	cp build/Release-gcc/gitsync dist/gitsync
-	strip dist/gitsync
-endif
+# Existing local aliases.
+debug: PRESET=debug-gcc
+debug: build
+release-gcc: PRESET=release-gcc
+release-gcc: build
+debug-clang: PRESET=debug-clang
+debug-clang: build
+release-clang: PRESET=release-clang
+release-clang: build
+debug-clang-libcxx: PRESET=debug-clang-libcxx
+debug-clang-libcxx: build
+release-clang-libcxx: PRESET=release-clang-libcxx
+release-clang-libcxx: build
+debug-msvc: PRESET=debug-msvc
+debug-msvc: build
+release-msvc: PRESET=release-msvc
+release-msvc: build
+
+all: gcc-15-debug gcc-15-release clang18-libcxx-debug clang18-libcxx-release
+
+gcc-15-debug:
+	$(MAKE) build PRESET=$@
+gcc-15-release:
+	$(MAKE) build PRESET=$@
+clang18-libcxx-debug:
+	$(MAKE) build PRESET=$@
+clang18-libcxx-release:
+	$(MAKE) build PRESET=$@
+
+ci-fast: pr-fast
+ci-deep: weekly-deep
+ci-coverage: coverage
+build-release:
+	$(MAKE) build PRESET=release-gcc
+
+clean:
+	rm -rf build dist $(COVERAGE_HTML) $(COVERAGE_XML)

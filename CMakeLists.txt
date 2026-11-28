@@ -55,6 +55,10 @@ aw_add_library(TARGET gitsync_core TYPE STATIC ALIAS aw::gitsync_core
         nlohmann_json::nlohmann_json
         spdlog::spdlog)
 
+if(GITSYNC_WARNINGS_AS_ERRORS)
+    aw_configure_compiler(TARGET gitsync_core STRICT_WARNINGS)
+endif()
+
 # Windows version resource and icon (Windows only)
 if(WIN32)
     include(Windows/WinVersion)
@@ -79,6 +83,8 @@ aw_add_executable(TARGET gitsync SOURCES src/main.cpp ${GITSYNC_WIN_RESOURCES}
     LINK_LIBRARIES aw::gitsync_core)
 
 target_compile_definitions(gitsync PRIVATE GITSYNC_VERSION="${PROJECT_VERSION}")
+
+install(TARGETS gitsync RUNTIME DESTINATION .)
 
 # Windows code signing (Windows only)
 # Certificate setup: see template_cpp/tools/create_cert.ps1
