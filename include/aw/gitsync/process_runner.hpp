@@ -11,6 +11,11 @@ struct ProcessOutput {
     std::string stdout_str;
     std::string stderr_str;
     bool success{false};
+
+    /// Returns stderr, or merged command output when stderr was redirected.
+    [[nodiscard]] std::string diagnostic() const {
+        return stderr_str.empty() ? stdout_str : stderr_str;
+    }
 };
 
 /// Interface for running external commands

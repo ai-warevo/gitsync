@@ -73,7 +73,7 @@ void GitSyncService::ensure_inside_git_repo() {
             "git", std::vector<std::string>{"rev-parse", "--is-inside-work-tree"});
         if (!output.success) {
             throw std::runtime_error("Current directory is not a git repository: " +
-                                     output.stderr_str);
+                                     output.diagnostic());
         }
     } catch (const std::exception& e) {
         throw std::runtime_error("Process execution error: " + std::string(e.what()));
@@ -91,10 +91,10 @@ std::string GitSyncService::try_get_remote_url(const std::string& remote_name) {
           If git stderr mentions "No such remote", the remote doesn't exist yet;
           return empty string to signal ensure_remote() to add it.
         */
-        if (output.stderr_str.find("No such remote") != std::string::npos) {
+        if (output.diagnostic().find("No such remote") != std::string::npos) {
             return "";
         }
-        throw std::runtime_error("Failed to get remote url: " + output.stderr_str);
+        throw std::runtime_error("Failed to get remote url: " + output.diagnostic());
     } catch (const std::exception& e) {
         throw std::runtime_error("Process run failed: " + std::string(e.what()));
     }
@@ -108,7 +108,7 @@ void GitSyncService::ensure_remote(const std::string& remote_name, const std::st
         auto output = process_runner_->run(
             "git", std::vector<std::string>{"remote", "add", remote_name, remote_url});
         if (!output.success) {
-            throw std::runtime_error(remote_name + " add error: " + output.stderr_str);
+            throw std::runtime_error(remote_name + " add error: " + output.diagnostic());
         }
         spdlog::info("{} remote url successfully added", remote_name);
     } else {
@@ -128,7 +128,7 @@ void GitSyncService::ensure_remote(const std::string& remote_name, const std::st
             auto output = process_runner_->run(
                 "git", std::vector<std::string>{"remote", "set-url", remote_name, remote_url});
             if (!output.success) {
-                throw std::runtime_error(remote_name + " set-url error: " + output.stderr_str);
+                throw std::runtime_error(remote_name + " set-url error: " + output.diagnostic());
             }
             spdlog::info("{} remote url successfully updated", remote_name);
         }
@@ -140,7 +140,7 @@ std::string GitSyncService::build_refspec() {
         "git", std::vector<std::string>{"remote", "get-url", config_.source_remote_name});
 
     if (!source_output.success) {
-        throw std::runtime_error("Git remote url error: " + source_output.stderr_str);
+        throw std::runtime_error("Git remote url error: " + source_output.diagnostic());
     }
     auto source_remote_url = source_output.stdout_str;
 
@@ -148,7 +148,7 @@ std::string GitSyncService::build_refspec() {
         process_runner_->run("git", std::vector<std::string>{"branch", "--show-current"});
 
     if (!branch_output.success) {
-        throw std::runtime_error("Git branch error: " + branch_output.stderr_str);
+        throw std::runtime_error("Git branch error: " + branch_output.diagnostic());
     }
     std::string branch_name = branch_output.stdout_str;
 
@@ -163,7 +163,7 @@ void GitSyncService::push_remote(const std::string& remote_name, const std::stri
         process_runner_->run("git", std::vector<std::string>{"push", remote_name, refspec});
 
     if (!output.success) {
-        spdlog::error("{} push failed: {}", remote_name, output.stderr_str);
+        spdlog::error("{} push failed: {}", remote_name, output.diagnostic());
         throw std::runtime_error(remote_name + " failed to push changes");
     }
 

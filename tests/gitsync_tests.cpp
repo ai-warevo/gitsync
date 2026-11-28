@@ -12,6 +12,16 @@
 using namespace aw::gitsync;
 using json = nlohmann::json;
 
+TEST_CASE("ProcessOutput diagnostic uses captured command output", "[process]") {
+    ProcessOutput merged_output{
+        .stdout_str = "permission denied", .stderr_str = "", .success = false};
+    REQUIRE(merged_output.diagnostic() == "permission denied");
+
+    ProcessOutput stderr_output{
+        .stdout_str = "command output", .stderr_str = "remote rejected", .success = false};
+    REQUIRE(stderr_output.diagnostic() == "remote rejected");
+}
+
 TEST_CASE("PartialConfigSettings::merge", "[config]") {
     PartialConfigSettings base;
     base.log_level = "info";
